@@ -8,3 +8,4 @@ class Article:
     summary: str
     source: str
     published_at: datetime
+    category: str
