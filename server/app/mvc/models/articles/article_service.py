@@ -1,19 +1,33 @@
-from typing import List, Optional
-from .article_repository import ArticleRepository
-from .article_entity import Article, Category
+# server/app/mvc/models/articles/article_service.py
+from typing import Optional, List, Tuple
+from sqlalchemy.orm import Session
+from app.mvc.models.articles.article_repository import ArticleRepository
+from app.mvc.models.articles.article_entity import Article
 
-class NewsService:
-    def __init__(self, repo: ArticleRepository) -> None:
-        self._repo = repo
+class ArticleService:
+    def __init__(self, db: Session):
+        self.repo = ArticleRepository(db)
 
-    def categories(self) -> List[str]:
-        return [c.value for c in Category]
+    def create(self, data: dict) -> Article:
+        # Convert Pydantic Url to string
+        if 'url' in data and data['url'] is not None:
+            data['url'] = str(data['url'])
+        
+        # Convert datetime if needed
+        if 'published_at' in data and data['published_at'] is not None:
+            if hasattr(data['published_at'], 'isoformat'):
+                data['published_at'] = data['published_at']
+            elif isinstance(data['published_at'], str):
+                from datetime import datetime
+                data['published_at'] = datetime.fromisoformat(data['published_at'])
+        
+        return self.repo.create(data)
 
-    def top(self, limit: int = 20, category: Optional[str] = None) -> List[Article]:
-        return self._repo.top(limit, category)
+    def get(self, article_id: int) -> Optional[Article]:
+        return self.repo.get(article_id)
 
-    def search(self, query: str, limit: int = 20, category: Optional[str] = None) -> List[Article]:
-        return self._repo.search(query, limit, category)
+    def list(self, category: Optional[str], page: int, page_size: int) -> Tuple[List[Article], int]:
+        return self.repo.list(category, page, page_size)
 
-    def get(self, article_id: str) -> Optional[Article]:
-        return self._repo.get(article_id)
+    def search(self, q: str, category: Optional[str]) -> List[Article]:
+        return self.repo.search(q, category)

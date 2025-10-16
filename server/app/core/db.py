@@ -1,20 +1,23 @@
+# app/core/db.py
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from .config import get_settings
+from sqlalchemy.orm import sessionmaker, declarative_base
+from app.core.config import get_settings
 
 settings = get_settings()
 
-# Engine (SQLite קובץ מקומי)
-engine = create_engine(settings.DB_URL, future=True, echo=False)
+# engine יציב ל-MSSQL/pyodbc
+engine = create_engine(
+    settings.DB_URL,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    connect_args={"timeout": 15},  # נסה 15–30
+    future=True,
+)
 
-# Session factory
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
-# Base לכל המודלים ה־ORMיים
-class Base(DeclarativeBase):
-    pass
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)
+Base = declarative_base()
 
-# תלות ל-FastAPI (Session לכל בקשה)
 def get_db():
     db = SessionLocal()
     try:
