@@ -24,6 +24,7 @@ def main() -> None:
     # משתנים גלובליים
     articles_window = None
     articles_presenter = None
+    login_presenter = None
     
     # יצירת חלון Login
     login_window = LoginWindow()
@@ -46,7 +47,7 @@ def main() -> None:
         
         # צור חלון מאמרים
         articles_window = ArticlesWindow(is_admin=is_admin, username=username)
-        articles_presenter = ArticlesPresenter(articles_window, news_service)
+        articles_presenter = ArticlesPresenter(articles_window, news_service, api_client)
         
         # חיבור logout
         articles_window.logout_clicked.connect(on_logout)
@@ -54,10 +55,14 @@ def main() -> None:
         # טעינה והצגה
         articles_presenter.load_initial()
         articles_window.show()
-    
+        
     def on_logout():
         """טיפול ביציאה"""
-        nonlocal articles_window
+        nonlocal articles_window, articles_presenter
+        
+        # נקה threads פעילים
+        if articles_presenter:
+            cleanup_presenter(articles_presenter)
         
         # נקה טוקן
         auth_manager.logout()
@@ -66,13 +71,34 @@ def main() -> None:
         # סגור חלון מאמרים
         if articles_window:
             articles_window.close()
+            articles_window = None
+            articles_presenter = None
         
         # הצג מחדש את Login
         login_window.clear()
         login_window.show()
     
-    # חיבור האירוע
+    def cleanup_presenter(presenter):
+        """נקה את כל ה-threads של presenter"""
+        if hasattr(presenter, '_threads'):
+            for thread in presenter._threads[:]:  # copy list
+                try:
+                    if thread.isRunning():
+                        thread.quit()
+                        thread.wait(1000)  # המתן עד שנייה
+                except:
+                    pass
+    
+    def on_app_quit():
+        """נקה לפני סגירת האפליקציה"""
+        if articles_presenter:
+            cleanup_presenter(articles_presenter)
+        if login_presenter:
+            cleanup_presenter(login_presenter)
+    
+    # חיבור האירועים
     login_presenter.login_successful.connect(on_login_successful)
+    app.aboutToQuit.connect(on_app_quit)
     
     # הצגת חלון Login
     login_window.show()

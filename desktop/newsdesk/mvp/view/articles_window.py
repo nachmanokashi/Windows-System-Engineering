@@ -15,20 +15,24 @@ class ArticleCard(QFrame):
     """כרטיס מאמר מעוצב"""
     clicked = Signal(Article)
     like_clicked = Signal(Article)
+    dislike_clicked = Signal(Article)
     
-    def __init__(self, article: Article, likes_count: int = 0, user_liked: bool = False):
+    def __init__(self, article: Article, likes_count: int = 0, dislikes_count: int = 0, 
+                 user_liked: bool = False, user_disliked: bool = False):
         super().__init__()
         self.article = article
         self.likes_count = likes_count
+        self.dislikes_count = dislikes_count
         self.user_liked = user_liked
+        self.user_disliked = user_disliked
         
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setStyleSheet("""
             ArticleCard {
                 background-color: #2d2d2d;
                 border-radius: 12px;
-                padding: 15px;
-                margin: 5px;
+                padding: 10px;
+                margin: 4px;
             }
             ArticleCard:hover {
                 background-color: #3d3d3d;
@@ -37,13 +41,16 @@ class ArticleCard(QFrame):
         """)
         
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setMaximumHeight(180)
+        self.setMaximumHeight(110)  # ← הקטנתי מ-150 ל-110 (-40px)
+        self.setMaximumWidth(800)   # ← הקטנתי רוחב ב-100px
         
         layout = QHBoxLayout(self)
+        layout.setSpacing(10)
+        layout.setContentsMargins(8, 8, 8, 8)
         
         # תמונה (placeholder)
         self.image_label = QLabel()
-        self.image_label.setFixedSize(150, 150)
+        self.image_label.setFixedSize(90, 90)  # ← הקטנתי מ-120x120
         self.image_label.setStyleSheet("""
             QLabel {
                 background-color: #1a1a1a;
@@ -66,13 +73,14 @@ class ArticleCard(QFrame):
         self.image_label.setText(emoji_text)
         
         image_font = QFont()
-        image_font.setPointSize(48)
+        image_font.setPointSize(32)  # ← הקטנתי מ-40
         self.image_label.setFont(image_font)
         
         layout.addWidget(self.image_label)
         
         # תוכן
         content_layout = QVBoxLayout()
+        content_layout.setSpacing(3)
         
         # כותרת
         title_label = QLabel(article.title)
@@ -80,62 +88,121 @@ class ArticleCard(QFrame):
         title_label.setStyleSheet("""
             QLabel {
                 color: #ffffff;
-                font-size: 16px;
+                font-size: 13px;
                 font-weight: bold;
             }
         """)
+        title_label.setMaximumHeight(35)  # הגבל גובה
         content_layout.addWidget(title_label)
         
         # סיכום
         summary_text = article.summary if article.summary else "No summary available"
-        if len(summary_text) > 150:
-            summary_text = summary_text[:150] + "..."
+        if len(summary_text) > 90:  # ← הקטנתי מ-120
+            summary_text = summary_text[:90] + "..."
         
         summary_label = QLabel(summary_text)
         summary_label.setWordWrap(True)
         summary_label.setStyleSheet("""
             QLabel {
                 color: #aaaaaa;
-                font-size: 13px;
+                font-size: 11px;
             }
         """)
+        summary_label.setMaximumHeight(30)  # הגבל גובה
         content_layout.addWidget(summary_label)
         
-        # מטא דאטה
+        # מטא-דאטא
         meta_layout = QHBoxLayout()
+        meta_layout.setSpacing(8)
         
-        source_label = QLabel(f"📍 {article.source}")
-        source_label.setStyleSheet("color: #888; font-size: 12px;")
+        source_label = QLabel(f"📰 {article.source}")
+        source_label.setStyleSheet("color: #888; font-size: 10px;")
         meta_layout.addWidget(source_label)
         
         meta_layout.addStretch()
         
-        # Sentiment (אם יש)
-        sentiment_label = QLabel("😊")
-        sentiment_label.setStyleSheet("font-size: 18px;")
-        meta_layout.addWidget(sentiment_label)
-        
-        # כפתור לייק
-        heart = "❤️" if user_liked else "🤍"
-        self.like_btn = QPushButton(f"{heart} {likes_count}")
+        # Like button
+        like_icon = "❤️" if user_liked else "🤍"
+        self.like_btn = QPushButton(f"{like_icon} {likes_count}")
+        self.like_btn.setFixedSize(60, 24)  # ← קטן יותר
         self.like_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {'#ff4444' if user_liked else '#444'};
                 color: white;
                 border: none;
-                border-radius: 15px;
-                padding: 5px 15px;
-                font-size: 14px;
+                border-radius: 10px;
+                padding: 2px 8px;
+                font-size: 11px;
             }}
             QPushButton:hover {{
-                background-color: #ff6666;
+                background-color: {'#ff6666' if user_liked else '#666'};
             }}
         """)
         self.like_btn.clicked.connect(lambda: self.like_clicked.emit(self.article))
         meta_layout.addWidget(self.like_btn)
         
+        # Dislike button
+        dislike_icon = "👎" if user_disliked else "👎🏻"
+        self.dislike_btn = QPushButton(f"{dislike_icon} {dislikes_count}")
+        self.dislike_btn.setFixedSize(60, 24)
+        self.dislike_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {'#4444ff' if user_disliked else '#444'};
+                color: white;
+                border: none;
+                border-radius: 10px;
+                padding: 2px 8px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {'#6666ff' if user_disliked else '#666'};
+            }}
+        """)
+        self.dislike_btn.clicked.connect(lambda: self.dislike_clicked.emit(self.article))
+        meta_layout.addWidget(self.dislike_btn)
+        
         content_layout.addLayout(meta_layout)
         layout.addLayout(content_layout)
+    
+    def update_stats(self, likes_count: int, dislikes_count: int, user_liked: bool, user_disliked: bool):
+        """עדכון סטטיסטיקות"""
+        self.likes_count = likes_count
+        self.dislikes_count = dislikes_count
+        self.user_liked = user_liked
+        self.user_disliked = user_disliked
+        
+        like_icon = "❤️" if user_liked else "🤍"
+        dislike_icon = "👎" if user_disliked else "👎🏻"
+        
+        self.like_btn.setText(f"{like_icon} {likes_count}")
+        self.like_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {'#ff4444' if user_liked else '#444'};
+                color: white;
+                border: none;
+                border-radius: 10px;
+                padding: 2px 8px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {'#ff6666' if user_liked else '#666'};
+            }}
+        """)
+        
+        self.dislike_btn.setText(f"{dislike_icon} {dislikes_count}")
+        self.dislike_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {'#4444ff' if user_disliked else '#444'};
+                color: white;
+                border: none;
+                border-radius: 10px;
+                padding: 2px 8px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {'#6666ff' if user_disliked else '#666'};
+            }}
+        """)
     
     def mousePressEvent(self, event):
         """לחיצה על הכרטיס"""
@@ -153,16 +220,17 @@ class ArticlesWindow(QMainWindow):
         self.is_admin = is_admin
         self.username = username
         self.setWindowTitle("NewsDesk 📰")
-        self.setMinimumSize(1200, 800)
+        self.setMinimumSize(1000, 700)  # ← הקטנתי מ-1200x800
         
-        # Dark theme
+        # Dark theme - עיצוב זהה ל-Login
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #1a1a1a;
+                background-color: #1a1a2e;
             }
             QTabWidget::pane {
                 border: 1px solid #444;
-                background-color: #1a1a1a;
+                background-color: #1a1a2e;
+                border-radius: 8px;
             }
             QTabBar::tab {
                 background-color: #2d2d2d;
@@ -171,37 +239,55 @@ class ArticlesWindow(QMainWindow):
                 margin-right: 2px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
+                font-size: 13px;
             }
             QTabBar::tab:selected {
-                background-color: #4a9eff;
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #4a9eff,
+                    stop:1 #00d4ff
+                );
                 color: white;
+                font-weight: bold;
             }
             QLineEdit {
-                background-color: #2d2d2d;
+                background-color: rgba(255, 255, 255, 0.05);
                 color: white;
-                border: 2px solid #444;
-                border-radius: 8px;
-                padding: 10px;
-                font-size: 14px;
+                border: 2px solid rgba(74, 158, 255, 0.2);
+                border-radius: 10px;
+                padding: 10px 15px;
+                font-size: 13px;
             }
             QLineEdit:focus {
                 border: 2px solid #4a9eff;
+                background-color: rgba(255, 255, 255, 0.08);
+            }
+            QLineEdit::placeholder {
+                color: #8892b0;
             }
             QScrollArea {
                 border: none;
-                background-color: #1a1a1a;
+                background-color: #1a1a2e;
             }
             QPushButton {
-                background-color: #4a9eff;
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #4a9eff,
+                    stop:1 #00d4ff
+                );
                 color: white;
                 border: none;
-                border-radius: 8px;
+                border-radius: 10px;
                 padding: 10px 20px;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #5ab0ff;
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #5ab0ff,
+                    stop:1 #20e4ff
+                );
             }
             QLabel {
                 color: #aaa;
@@ -210,6 +296,12 @@ class ArticlesWindow(QMainWindow):
                 background-color: #2d2d2d;
                 color: white;
                 border: 1px solid #444;
+                border-radius: 8px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 8px 20px;
+                border-radius: 5px;
             }
             QMenu::item:selected {
                 background-color: #4a9eff;
@@ -217,6 +309,14 @@ class ArticlesWindow(QMainWindow):
         """)
         
         self._setup_ui()
+        self._center_on_screen()
+    
+    def _center_on_screen(self):
+        """מרכז את החלון במסך"""
+        screen = self.screen().geometry()
+        x = (screen.width() - self.width()) // 2
+        y = (screen.height() - self.height()) // 2
+        self.move(x, y)
     
     def _setup_ui(self):
         """בניית הממשק"""
@@ -225,16 +325,25 @@ class ArticlesWindow(QMainWindow):
         
         main_layout = QVBoxLayout(central)
         main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
         
         # Header
         header_layout = QHBoxLayout()
         
         title = QLabel("📰 NewsDesk")
         title_font = QFont()
-        title_font.setPointSize(24)
+        title_font.setPointSize(22)  # ← הקטנתי מ-24
         title_font.setBold(True)
         title.setFont(title_font)
-        title.setStyleSheet("color: #4a9eff;")
+        title.setStyleSheet("""
+            QLabel {
+                color: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #4a9eff,
+                    stop:1 #00d4ff
+                );
+            }
+        """)
         header_layout.addWidget(title)
         
         header_layout.addStretch()
@@ -242,11 +351,13 @@ class ArticlesWindow(QMainWindow):
         # Admin button
         if self.is_admin:
             admin_btn = QPushButton("👑 Admin Panel")
+            admin_btn.setMaximumWidth(150)
             admin_btn.clicked.connect(self._show_admin_panel)
             header_layout.addWidget(admin_btn)
         
         # Profile button with menu
         self.profile_btn = QPushButton(f"👤 {self.username}")
+        self.profile_btn.setMaximumWidth(180)
         self.profile_btn.clicked.connect(self._show_profile_menu)
         header_layout.addWidget(self.profile_btn)
         
@@ -259,10 +370,12 @@ class ArticlesWindow(QMainWindow):
         for cat in CATS:
             page = QWidget()
             page_layout = QVBoxLayout(page)
+            page_layout.setSpacing(10)
             
             # Search box
             search = QLineEdit()
             search.setPlaceholderText(f"🔍 חיפוש ב-{cat}...")
+            search.setMaximumHeight(45)
             page_layout.addWidget(search)
             
             # Scroll area for cards
@@ -272,14 +385,14 @@ class ArticlesWindow(QMainWindow):
             
             scroll_content = QWidget()
             scroll_layout = QVBoxLayout(scroll_content)
-            scroll_layout.setSpacing(10)
+            scroll_layout.setSpacing(8)
             
             scroll.setWidget(scroll_content)
             page_layout.addWidget(scroll)
             
             # Status
             status = QLabel("")
-            status.setStyleSheet("color: #888; font-size: 12px;")
+            status.setStyleSheet("color: #888; font-size: 11px;")
             page_layout.addWidget(status)
             
             self._tabs.addTab(page, cat.capitalize())
@@ -331,7 +444,27 @@ class ArticlesWindow(QMainWindow):
     
     def _show_settings(self):
         """הגדרות"""
-        QMessageBox.information(self, "Settings", "Settings - Coming Soon!")
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Settings")
+        msg.setText("Settings - Coming Soon!")
+        msg.setStyleSheet("""
+            QMessageBox {
+                background-color: #1a1a2e;
+            }
+            QMessageBox QLabel {
+                color: white;
+                min-width: 250px;
+            }
+            QPushButton {
+                background-color: #4a9eff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 20px;
+                min-width: 80px;
+            }
+        """)
+        msg.exec()
     
     def set_articles(self, cat: str, articles: List[Article], likes_data: Dict[int, Dict] = None):
         """הצגת מאמרים בכרטיסים"""
@@ -364,11 +497,7 @@ class ArticlesWindow(QMainWindow):
     
     def _on_article_clicked(self, article: Article):
         """לחיצה על מאמר"""
-        QMessageBox.information(
-            self,
-            article.title,
-            f"{article.summary}\n\nSource: {article.source}"
-        )
+        pass
     
     def _on_like_clicked(self, article: Article):
         """לייק למאמר"""
@@ -376,7 +505,27 @@ class ArticlesWindow(QMainWindow):
     
     def _show_admin_panel(self):
         """פתח Admin Panel"""
-        QMessageBox.information(self, "Admin", "Admin Panel - Coming Soon!")
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Admin")
+        msg.setText("Admin Panel - Coming Soon!")
+        msg.setStyleSheet("""
+            QMessageBox {
+                background-color: #1a1a2e;
+            }
+            QMessageBox QLabel {
+                color: white;
+                min-width: 250px;
+            }
+            QPushButton {
+                background-color: #4a9eff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 20px;
+                min-width: 80px;
+            }
+        """)
+        msg.exec()
     
     def search_box(self, cat: str) -> QLineEdit:
         return self._per_cat_widgets[cat]["search"]

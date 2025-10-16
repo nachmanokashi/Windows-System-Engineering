@@ -45,3 +45,5 @@ class NewsApiClient:
         r = self._client.delete(path, headers=self._get_headers())
         r.raise_for_status()
         return r.json() if r.content else {}
+    
+    

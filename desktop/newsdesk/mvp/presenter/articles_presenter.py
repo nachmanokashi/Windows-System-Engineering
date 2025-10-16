@@ -1,40 +1,44 @@
-# newsdesk/mvp/presenter/modern_articles_presenter.py
+# newsdesk/mvp/presenter/articles_presenter.py
 from typing import List, Dict, Any, Callable
-from PySide6.QtCore import QObject, Slot, QTimer, QRunnable, Signal, QThreadPool
+from PySide6.QtCore import QObject, Slot, QTimer, QThread, Signal
 from newsdesk.mvp.view.articles_window import ArticlesWindow
+from newsdesk.mvp.view.article_detail_window import ArticleDetailWindow
 from newsdesk.mvp.model.article import Article
 from newsdesk.infra.http.news_service_http import HttpNewsService
+from newsdesk.infra.http.likes_service_http import HttpLikesService
+from newsdesk.infra.http.news_api_client import NewsApiClient
 
-# --- Background Task Runner ---
-class _TaskSignals(QObject):
-    result = Signal(object)
+class WorkerThread(QThread):
+    """Worker thread for background tasks"""
+    finished = Signal(object)
     error = Signal(str)
-
-class _Task(QRunnable):
-    def __init__(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+    
+    def __init__(self, fn: Callable, *args, **kwargs):
         super().__init__()
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
-        self.signals = _TaskSignals()
     
-    def run(self) -> None:
+    def run(self):
         try:
-            self.signals.result.emit(self.fn(*self.args, **self.kwargs))
-        except Exception as ex:
-            self.signals.error.emit(str(ex))
+            result = self.fn(*self.args, **self.kwargs)
+            self.finished.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
 
-def run_in_background(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> _Task:
-    t = _Task(fn, *args, **kwargs)
-    QThreadPool.globalInstance().start(t)
-    return t
 
-# --- Modern Articles Presenter ---
 class ArticlesPresenter(QObject):
-    def __init__(self, view: ArticlesWindow, service: HttpNewsService) -> None:
+    def __init__(self, view: ArticlesWindow, service: HttpNewsService, api_client: NewsApiClient) -> None:
         super().__init__()
         self._view = view
         self._service = service
+        self._likes_service = HttpLikesService(api_client)
+        
+        # Cache של likes
+        self._likes_cache: Dict[str, Dict[int, Dict]] = {}
+        
+        # שמירת threads פעילים
+        self._threads: List[QThread] = []
         
         # דיבאונס וטוקנים פר קטגוריה
         self._debounce: Dict[str, QTimer] = {}
@@ -53,22 +57,51 @@ class ArticlesPresenter(QObject):
                 lambda _t, c=cat: self.on_search_changed(c)
             )
     
+    def _cleanup_thread(self, thread: QThread):
+        """נקה thread"""
+        try:
+            self._threads.remove(thread)
+        except ValueError:
+            pass
+    
     def load_initial(self) -> None:
         """טעינה ראשונית לכל הטאבים"""
         for cat in self._view.categories:
-            task = run_in_background(self._service.top, 20, cat)
-            task.signals.result.connect(lambda items, c=cat: self._on_loaded(c, items))
-            task.signals.error.connect(lambda e: print(f"Error: {e}"))
+            thread = WorkerThread(self._service.top, 20, cat)
+            
+            # שמור reference
+            self._threads.append(thread)
+            
+            # חבר signals
+            thread.finished.connect(lambda items, c=cat: self._on_loaded(c, items))
+            thread.error.connect(lambda e, c=cat: print(f"Error loading {c}: {e}"))
+            
+            # נקה
+            thread.finished.connect(lambda t=thread: self._cleanup_thread(t))
+            thread.error.connect(lambda e, t=thread: self._cleanup_thread(t))
+            
+            thread.start()
     
     @Slot(object)
     def _on_loaded(self, cat: str, items_obj: object) -> None:
         """מאמרים נטענו"""
-        items: List[Article] = items_obj  # type: ignore
+        items: List[Article] = items_obj
         
-        # TODO: טען גם likes data מהשרת
-        likes_data = {}  # {article_id: {"likes_count": 0, "user_liked": False}}
+        # טען likes לכל המאמרים
+        self._load_likes_for_articles(cat, items)
+    
+    def _load_likes_for_articles(self, cat: str, articles: List[Article]) -> None:
+        """טען likes לכל המאמרים"""
+        # כרגע פשוט נציג בלי likes
+        likes_data = {}
+        for article in articles:
+            likes_data[int(article.id)] = {
+                "likes_count": 0,
+                "user_liked": False
+            }
         
-        self._view.set_articles(cat, items, likes_data)
+        self._likes_cache[cat] = likes_data
+        self._view.set_articles(cat, articles, likes_data)
     
     @Slot()
     def on_search_changed(self, cat: str) -> None:
@@ -84,11 +117,42 @@ class ArticlesPresenter(QObject):
         def on_result(items_obj: object) -> None:
             if my_token != self._token[cat]:
                 return
-            items: List[Article] = items_obj  # type: ignore
-            likes_data = {}
-            self._view.set_articles(cat, items, likes_data)
+            items: List[Article] = items_obj
+            self._load_likes_for_articles(cat, items)
         
-        task = run_in_background(self._service.search, q, 20, cat) if q \
-               else run_in_background(self._service.top, 20, cat)
-        task.signals.result.connect(on_result)
-        task.signals.error.connect(lambda e: print(f"Search error: {e}"))
+        # צור thread
+        if q:
+            thread = WorkerThread(self._service.search, q, 20, cat)
+        else:
+            thread = WorkerThread(self._service.top, 20, cat)
+        
+        # שמור reference
+        self._threads.append(thread)
+        
+        thread.finished.connect(on_result)
+        thread.error.connect(lambda e: print(f"Search error: {e}"))
+        
+        # נקה
+        thread.finished.connect(lambda t=thread: self._cleanup_thread(t))
+        thread.error.connect(lambda e, t=thread: self._cleanup_thread(t))
+        
+        thread.start()
+    
+    def show_article_details(self, article: Article, likes_count: int, user_liked: bool) -> None:
+        """הצג חלון פרטי מאמר"""
+        detail_window = ArticleDetailWindow(
+            article, 
+            likes_count, 
+            user_liked, 
+            self._view
+        )
+        detail_window.like_clicked.connect(self._on_like_from_detail)
+        detail_window.exec()
+    
+    def _on_like_from_detail(self, article: Article) -> None:
+        """לייק מחלון הפרטים"""
+        self._toggle_like(article)
+    
+    def _toggle_like(self, article: Article) -> None:
+        """החלף מצב לייק"""
+        print(f"Toggle like for article {article.id}")
