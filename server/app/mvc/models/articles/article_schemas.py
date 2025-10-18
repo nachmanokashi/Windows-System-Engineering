@@ -7,10 +7,13 @@ from datetime import datetime
 class ArticleBase(BaseModel):
     title: str
     summary: Optional[str] = None
-    source: Optional[str] = None
+    content: Optional[str] = None         
     category: Optional[str] = None
+    image_url: Optional[str] = None       
+    thumb_url: Optional[str] = None       
     published_at: Optional[datetime] = None
-    url: Optional[HttpUrl] = None
+    source: Optional[str] = None
+    url: Optional[str] = None
 
 class ArticleCreate(ArticleBase):
     """קלט ליצירה/עדכון"""

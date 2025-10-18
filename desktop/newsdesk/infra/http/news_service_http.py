@@ -15,6 +15,8 @@ class HttpNewsService:
             source=data.get("source", ""),
             published_at=datetime.fromisoformat(data["published_at"]),
             category=data.get("category", ""),
+            image_url=data.get("image_url", ""),
+            thumb_url=data.get("thumb_url", "")
         )
 
     def categories(self) -> List[str]:

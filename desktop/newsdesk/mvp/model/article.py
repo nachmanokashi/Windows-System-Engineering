@@ -9,3 +9,5 @@ class Article:
     source: str
     published_at: datetime
     category: str
+    image_url: str
+    thumb_url: str

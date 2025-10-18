@@ -12,14 +12,16 @@ class Article(Base):
     summary = Column(Text, nullable=True)
     body = Column(Text, nullable=True)
     url = Column(String(500), nullable=False, unique=True)
-    image_url = Column(String(500), nullable=True)  # ← תמונה למאמר
+    image_url = Column(String(500), nullable=False)  
     published_at = Column(DateTime, nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=func.getdate())
-    
+    content = Column(Text)               
+    thumb_url = Column(String(500))      
+
     category = Column(String(100), nullable=False, index=True)
     source = Column(String(100), nullable=True)
     
-    # ← NEW: AI Analysis fields
-    sentiment_score = Column(String(50), nullable=True)  # POSITIVE/NEGATIVE
-    sentiment_confidence = Column(String(10), nullable=True)  # 0.95
-    entities_json = Column(Text, nullable=True)  # JSON של NER entities
+    # AI Analysis fields
+    sentiment_score = Column(String(50), nullable=True)  
+    sentiment_confidence = Column(String(10), nullable=True)  
+    entities_json = Column(Text, nullable=True)  

@@ -7,8 +7,25 @@ from app.mvc.models.users.user_entity import User
 from app.mvc.models.articles.article_service import ArticleService
 from app.mvc.models.articles.article_schemas import ArticleCreate, ArticleRead
 from sqlalchemy.exc import IntegrityError
+from app.mvc.models.likes.likes_service import LikeService
+from fastapi import Body
+from sqlalchemy import func
+from app.mvc.models.articles.article_entity import Article
 
 router = APIRouter(tags=["articles"])
+
+
+@router.get("/articles/categories")
+def list_categories(db: Session = Depends(get_db)):
+    # מביא רשימת קטגוריות ייחודיות (לא ריקות)
+    rows = (
+        db.query(Article.category)
+          .filter(Article.category.isnot(None))
+          .distinct()
+          .all()
+    )
+    items = [r[0] for r in rows if r[0]]
+    return {"items": items}
 
 # Public routes (לא דורשות אימות)
 @router.get("/articles")
@@ -34,6 +51,8 @@ def list_articles(
                 "source": row.source,
                 "category": row.category,
                 "published_at": row.published_at.isoformat() if row.published_at else None,
+                "image_url": row.image_url if row.image_url else "",  
+                "thumb_url": row.thumb_url if row.thumb_url else "" 
             }
             for row in rows
         ]
@@ -68,6 +87,8 @@ def search_articles(
                 "source": row.source,
                 "category": row.category,
                 "published_at": row.published_at.isoformat() if row.published_at else None,
+                "image_url": row.image_url if row.image_url else "",
+                "thumb_url": row.thumb_url if row.thumb_url else ""
             }
             for row in rows
         ]
@@ -114,3 +135,16 @@ def create_article(
     except Exception as e:
         print(f"Error creating article: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create article: {str(e)}")
+    
+
+@router.post("/articles/batch-stats")
+def batch_stats(ids: List[int] = Body(..., embed=True), db: Session = Depends(get_db)):
+    """סטטיסטיקות לייקים למספר מאמרים"""
+    stats = LikeService(db).batch_stats(ids)
+    return stats
+
+@router.get("/articles/{article_id}/stats")
+def article_stats(article_id: int, db: Session = Depends(get_db)):
+    """סטטיסטיקות לייקים למאמר יחיד"""
+    stats = LikeService(db).single_stats(article_id)
+    return stats

@@ -4,6 +4,7 @@ from app.core.middleware import add_middlewares
 from app.core.db import Base, engine
 from app.mvc.controllers import health_controller
 from app.mvc.controllers import articles_controller, auth_controller, llm_controller, likes_controller
+from fastapi.staticfiles import StaticFiles
 
 settings = get_settings()
 
@@ -30,6 +31,7 @@ app.include_router(auth_controller.router, prefix=settings.API_PREFIX)
 app.include_router(articles_controller.router, prefix=settings.API_PREFIX)
 app.include_router(llm_controller.router, prefix=settings.API_PREFIX)
 app.include_router(likes_controller.router, prefix=settings.API_PREFIX)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/")
 def root():

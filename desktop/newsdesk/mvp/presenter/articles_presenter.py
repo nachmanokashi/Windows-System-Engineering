@@ -1,4 +1,3 @@
-# newsdesk/mvp/presenter/articles_presenter.py
 from typing import List, Dict, Any, Callable
 from PySide6.QtCore import QObject, Slot, QTimer, QThread, Signal
 from newsdesk.mvp.view.articles_window import ArticlesWindow
@@ -34,17 +33,11 @@ class ArticlesPresenter(QObject):
         self._service = service
         self._likes_service = HttpLikesService(api_client)
         
-        # Cache של likes
         self._likes_cache: Dict[str, Dict[int, Dict]] = {}
-        
-        # שמירת threads פעילים
         self._threads: List[QThread] = []
-        
-        # דיבאונס וטוקנים פר קטגוריה
         self._debounce: Dict[str, QTimer] = {}
         self._token: Dict[str, int] = {}
         
-        # חיבורי אירועים לכל קטגוריה
         for cat in self._view.categories:
             timer = QTimer(self)
             timer.setSingleShot(True)
@@ -56,7 +49,11 @@ class ArticlesPresenter(QObject):
             self._view.search_box(cat).textChanged.connect(
                 lambda _t, c=cat: self.on_search_changed(c)
             )
-    
+
+        self._view.article_card_clicked.connect(self.show_article_details)
+        self._view.like_button_clicked.connect(self._toggle_like)
+        self._view.dislike_button_clicked.connect(self._toggle_dislike)
+
     def _cleanup_thread(self, thread: QThread):
         """נקה thread"""
         try:
@@ -68,41 +65,40 @@ class ArticlesPresenter(QObject):
         """טעינה ראשונית לכל הטאבים"""
         for cat in self._view.categories:
             thread = WorkerThread(self._service.top, 20, cat)
-            
-            # שמור reference
             self._threads.append(thread)
-            
-            # חבר signals
             thread.finished.connect(lambda items, c=cat: self._on_loaded(c, items))
             thread.error.connect(lambda e, c=cat: print(f"Error loading {c}: {e}"))
-            
-            # נקה
             thread.finished.connect(lambda t=thread: self._cleanup_thread(t))
             thread.error.connect(lambda e, t=thread: self._cleanup_thread(t))
-            
             thread.start()
     
     @Slot(object)
     def _on_loaded(self, cat: str, items_obj: object) -> None:
         """מאמרים נטענו"""
         items: List[Article] = items_obj
-        
-        # טען likes לכל המאמרים
         self._load_likes_for_articles(cat, items)
     
     def _load_likes_for_articles(self, cat: str, articles: List[Article]) -> None:
-        """טען likes לכל המאמרים"""
-        # כרגע פשוט נציג בלי likes
-        likes_data = {}
-        for article in articles:
-            likes_data[int(article.id)] = {
-                "likes_count": 0,
-                "user_liked": False
-            }
+        """טוען סטטיסטיקות לייקים עבור רשימת כתבות"""
+        if not articles:
+            self._view.set_articles(cat, [], {})
+            return
+
+        article_ids = [int(a.id) for a in articles]
         
-        self._likes_cache[cat] = likes_data
-        self._view.set_articles(cat, articles, likes_data)
-    
+        def on_stats_loaded(stats_obj: object):
+            stats_data = stats_obj
+            stats_data_int_keys = {int(k): v for k, v in stats_data.items()}
+            self._likes_cache[cat] = stats_data
+            self._view.set_articles(cat, articles, stats_data)
+
+        thread = WorkerThread(self._likes_service.get_batch_stats, article_ids)
+        thread.finished.connect(on_stats_loaded)
+        thread.error.connect(lambda e: print(f"Error loading likes stats: {e}"))
+        self._threads.append(thread)
+        thread.finished.connect(lambda t=thread: self._cleanup_thread(t))
+        thread.start()
+
     @Slot()
     def on_search_changed(self, cat: str) -> None:
         """חיפוש השתנה"""
@@ -120,39 +116,73 @@ class ArticlesPresenter(QObject):
             items: List[Article] = items_obj
             self._load_likes_for_articles(cat, items)
         
-        # צור thread
         if q:
             thread = WorkerThread(self._service.search, q, 20, cat)
         else:
             thread = WorkerThread(self._service.top, 20, cat)
         
-        # שמור reference
         self._threads.append(thread)
-        
         thread.finished.connect(on_result)
         thread.error.connect(lambda e: print(f"Search error: {e}"))
-        
-        # נקה
         thread.finished.connect(lambda t=thread: self._cleanup_thread(t))
         thread.error.connect(lambda e, t=thread: self._cleanup_thread(t))
-        
         thread.start()
     
-    def show_article_details(self, article: Article, likes_count: int, user_liked: bool) -> None:
-        """הצג חלון פרטי מאמר"""
+    @Slot(Article)
+    def show_article_details(self, article: Article) -> None:
+        """מציג חלון פרטי כתבה"""
+        cat = article.category
+        article_id = int(article.id)
+        
+        stats = self._likes_cache.get(cat, {}).get(article_id, {
+            "likes_count": 0, "dislikes_count": 0, "user_liked": False, "user_disliked": False
+        })
+
         detail_window = ArticleDetailWindow(
-            article, 
-            likes_count, 
-            user_liked, 
-            self._view
+            article=article,
+            likes_count=stats['likes_count'],
+            user_liked=stats['user_liked'],
+            parent=self._view
         )
-        detail_window.like_clicked.connect(self._on_like_from_detail)
+        detail_window.like_clicked.connect(self._toggle_like)
         detail_window.exec()
-    
-    def _on_like_from_detail(self, article: Article) -> None:
-        """לייק מחלון הפרטים"""
-        self._toggle_like(article)
-    
+
+    def _update_ui_for_article(self, article_id: int, new_stats: Dict):
+        """מעדכן את ה-UI ואת ה-cache לאחר שינוי"""
+        for cat, cache in self._likes_cache.items():
+            if article_id in cache:
+                cache[article_id] = new_stats
+                self._view.update_article_card(cat, article_id, new_stats)
+                break
+
+    @Slot(Article)
     def _toggle_like(self, article: Article) -> None:
-        """החלף מצב לייק"""
-        print(f"Toggle like for article {article.id}")
+        """מטפל בלחיצה על כפתור לייק"""
+        article_id = int(article.id)
+        cat = article.category
+        currently_liked = self._likes_cache.get(cat, {}).get(article_id, {}).get("user_liked", False)
+
+        service_call = self._likes_service.unlike_article if currently_liked else self._likes_service.like_article
+
+        thread = WorkerThread(service_call, article_id)
+        thread.finished.connect(lambda result: self._update_ui_for_article(article_id, result.get("stats", {})))
+        thread.error.connect(lambda e: print(f"Error toggling like: {e}"))
+        self._threads.append(thread)
+        thread.finished.connect(lambda t=thread: self._cleanup_thread(t))
+        thread.start()
+
+    @Slot(Article)
+    def _toggle_dislike(self, article: Article) -> None:
+        """מטפל בלחיצה על כפתור דיסלייק"""
+        article_id = int(article.id)
+        cat = article.category
+        currently_disliked = self._likes_cache.get(cat, {}).get(article_id, {}).get("user_disliked", False)
+
+        service_call = self._likes_service.remove_dislike if currently_disliked else self._likes_service.dislike_article
+        
+        thread = WorkerThread(service_call, article_id)
+        thread.finished.connect(lambda result: self._update_ui_for_article(article_id, result.get("stats", {})))
+        thread.error.connect(lambda e: print(f"Error toggling dislike: {e}"))
+        self._threads.append(thread)
+        thread.finished.connect(lambda t=thread: self._cleanup_thread(t))
+        thread.start()
