@@ -16,8 +16,10 @@ from newsdesk.mvp.view.components.articles_list.articles_list_presenter import A
 from newsdesk.mvp.view.components.article_details.article_details_view import ArticleDetailsComponent
 from newsdesk.mvp.view.components.article_details.article_details_presenter import ArticleDetailsPresenter
 
-from newsdesk.infra.http.news_service_http import HttpNewsService
 from newsdesk.infra.http.news_api_client import NewsApiClient
+from newsdesk.infra.http.news_service_http import HttpNewsService
+# --- תיקון הייבוא כאן ---
+from newsdesk.infra.http.likes_service_http import HttpLikesService
 
 
 class MainWindowMicrofrontends(QMainWindow):
@@ -32,31 +34,31 @@ class MainWindowMicrofrontends(QMainWindow):
         self.api_client = api_client
         self.username = username
         self.is_admin = is_admin
+
+        # Services
         self.news_service = HttpNewsService(api_client)
+        # --- יצירת שירות הלייקים נשארת זהה ---
+        self.likes_service = HttpLikesService(api_client)
 
         self.setWindowTitle("NewsDesk - Microfrontends")
 
         # הגדרת הגודל הרצוי
         self.initial_width = 1300
         self.initial_height = 750
-        self.setMinimumSize(1000, 650) # גודל מינימלי מעט קטן יותר
+        self.setMinimumSize(1000, 650)
         self.resize(self.initial_width, self.initial_height)
 
         self._setup_ui()
         self._setup_microfrontends()
 
-        # טען את ה-component הראשון.
-        # הפעולה הזו תגרום ל-currentChanged signal להישלח, מה שיפעיל את _on_component_changed
         self.manager.load_component("articles_list")
-        self._center_on_screen() # מרכז אחרי הגדרת הגודל
+        self._center_on_screen()
 
     def _center_on_screen(self):
-        """מרכז את החלון במסך"""
         screen_geometry = self.screen().availableGeometry()
-        x = max(0, (screen_geometry.width() - self.initial_width) // 2) # Ensure x is not negative
-        y = max(0, (screen_geometry.height() - self.initial_height) // 2) # Ensure y is not negative
+        x = max(0, (screen_geometry.width() - self.initial_width) // 2)
+        y = max(0, (screen_geometry.height() - self.initial_height) // 2)
         self.move(x, y)
-
 
     def _setup_ui(self) -> None:
         central = QWidget()
@@ -138,7 +140,6 @@ class MainWindowMicrofrontends(QMainWindow):
         self.manager.container.currentChanged.connect(self._on_component_changed)
 
     def _on_component_changed(self, index: int) -> None:
-        """נקרא כאשר Component משתנה - חיבור Presenter וטעינת נתונים"""
         print(f"Main window: Component changed to index {index}")
         current_component = self.stacked_widget.widget(index)
 
@@ -157,22 +158,21 @@ class MainWindowMicrofrontends(QMainWindow):
                 presenter = ArticlesListPresenter(current_component, self.news_service)
                 current_component.presenter = presenter
                 current_component.article_clicked.connect(self.on_article_clicked)
-                needs_initial_load = True # סמן לטעינה ראשונית
-            # קרא לטעינת נתונים אם זו הפעם הראשונה
+                needs_initial_load = True
             if needs_initial_load:
                 print("Main window: Triggering initial data load for ArticlesListComponent.")
                 current_component.load_initial_data()
             else:
                  print("Main window: ArticlesListComponent already has a presenter.")
 
-
         elif isinstance(current_component, ArticleDetailsComponent):
             if not current_component.presenter:
                 print("Main window: Connecting ArticleDetailsPresenter...")
                 presenter = ArticleDetailsPresenter(current_component, self.news_service)
+                # ודא ששירות הלייקים מוזרק כאן
+                presenter.likes_service = self.likes_service
                 current_component.presenter = presenter
                 current_component.back_requested.connect(self.on_back_to_list_requested)
-            # ה-on_mount של הרכיב הזה יטען את הנתונים שלו בעצמו
 
     def _update_active_nav_button(self, current_component: QWidget = None):
         if current_component is None:
@@ -207,7 +207,6 @@ class MainWindowMicrofrontends(QMainWindow):
         if sender and isinstance(sender, QPushButton) and sender.isCheckable():
              sender.setChecked(False)
         self._update_active_nav_button()
-
 
     def on_logout_clicked(self) -> None:
         reply = QMessageBox.question(

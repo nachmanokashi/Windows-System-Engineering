@@ -1,176 +1,172 @@
 # server/app/mvc/models/likes/likes_service.py
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-# ודא שהמודל הנכון מיובא
+from sqlalchemy.exc import SQLAlchemyError
 from app.mvc.models.likes.article_like_entity import ArticleLike
 from typing import Dict, Optional
+import traceback
 
 class LikesService:
     def __init__(self, db: Session):
         self.db = db
 
-    def like(self, article_id: int, user_id: int) -> bool:
+    def toggle_like(self, article_id: int, user_id: int) -> Dict:
         """
-        לייק למאמר. אם יש דיסלייק, מסיר אותו.
-        מחזיר True אם הלייק נוסף, False אם כבר היה קיים.
+        Toggle like for an article.
+        - If user already liked: remove like
+        - If user disliked: switch to like
+        - If no reaction: add like
         """
-        # בדוק אם כבר יש like
-        existing_like = self.db.query(ArticleLike).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.user_id == user_id,
-            ArticleLike.is_like == True
-        ).first()
+        try:
+            # מצא את הריאקציה הקיימת של המשתמש (אם יש)
+            existing = self.db.query(ArticleLike).filter(
+                ArticleLike.article_id == article_id,
+                ArticleLike.user_id == user_id
+            ).first()
 
-        if existing_like:
-            return False  # כבר אהב
+            if existing:
+                if existing.is_like:
+                    # כבר יש לייק → מבטל
+                    self.db.delete(existing)
+                    print(f"👎 User {user_id} removed like from article {article_id}")
+                else:
+                    # יש דיסלייק → מחליף ללייק
+                    existing.is_like = True
+                    print(f"🔄 User {user_id} switched from dislike to like on article {article_id}")
+            else:
+                # אין ריאקציה → מוסיף לייק
+                new_like = ArticleLike(article_id=article_id, user_id=user_id, is_like=True)
+                self.db.add(new_like)
+                print(f"👍 User {user_id} liked article {article_id}")
 
-        # בדוק אם יש dislike והסר אותו אם כן
-        existing_dislike = self.db.query(ArticleLike).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.user_id == user_id,
-            ArticleLike.is_like == False
-        ).first()
+            self.db.commit()
+            
+            # החזר את הסטטיסטיקות המעודכנות
+            return self.get_article_stats(article_id, user_id)
 
-        if existing_dislike:
-            self.db.delete(existing_dislike)
-            # אין צורך ב-commit כאן, הוא יקרה בהוספת הלייק
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            print(f"❌ DB Error in toggle_like for article {article_id}, user {user_id}: {e}")
+            traceback.print_exc()
+            raise
 
-        # צור like חדש
-        like = ArticleLike(
-            article_id=article_id,
-            user_id=user_id,
-            is_like=True
-        )
-        self.db.add(like)
-        self.db.commit()
-        return True
-
-    def unlike(self, article_id: int, user_id: int) -> bool:
+    def toggle_dislike(self, article_id: int, user_id: int) -> Dict:
         """
-        הסרת לייק.
-        מחזיר True אם הלייק הוסר, False אם לא היה קיים.
+        Toggle dislike for an article.
+        - If user already disliked: remove dislike
+        - If user liked: switch to dislike
+        - If no reaction: add dislike
         """
-        like = self.db.query(ArticleLike).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.user_id == user_id,
-            ArticleLike.is_like == True
-        ).first()
+        try:
+            # מצא את הריאקציה הקיימת של המשתמש (אם יש)
+            existing = self.db.query(ArticleLike).filter(
+                ArticleLike.article_id == article_id,
+                ArticleLike.user_id == user_id
+            ).first()
 
-        if not like:
-            return False
+            if existing:
+                if not existing.is_like:
+                    # כבר יש דיסלייק → מבטל
+                    self.db.delete(existing)
+                    print(f"👎 User {user_id} removed dislike from article {article_id}")
+                else:
+                    # יש לייק → מחליף לדיסלייק
+                    existing.is_like = False
+                    print(f"🔄 User {user_id} switched from like to dislike on article {article_id}")
+            else:
+                # אין ריאקציה → מוסיף דיסלייק
+                new_dislike = ArticleLike(article_id=article_id, user_id=user_id, is_like=False)
+                self.db.add(new_dislike)
+                print(f"👎 User {user_id} disliked article {article_id}")
 
-        self.db.delete(like)
-        self.db.commit()
-        return True
+            self.db.commit()
+            
+            # החזר את הסטטיסטיקות המעודכנות
+            return self.get_article_stats(article_id, user_id)
 
-    def dislike(self, article_id: int, user_id: int) -> bool:
-        """
-        דיסלייק למאמר. אם יש לייק, מסיר אותו.
-        מחזיר True אם הדיסלייק נוסף, False אם כבר היה קיים.
-        """
-        # בדוק אם כבר יש dislike
-        existing_dislike = self.db.query(ArticleLike).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.user_id == user_id,
-            ArticleLike.is_like == False
-        ).first()
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            print(f"❌ DB Error in toggle_dislike for article {article_id}, user {user_id}: {e}")
+            traceback.print_exc()
+            raise
 
-        if existing_dislike:
-            return False # כבר לא אהב
-
-        # בדוק אם יש like והסר אותו אם כן
-        existing_like = self.db.query(ArticleLike).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.user_id == user_id,
-            ArticleLike.is_like == True
-        ).first()
-
-        if existing_like:
-            self.db.delete(existing_like)
-            # אין צורך ב-commit כאן, הוא יקרה בהוספת הדיסלייק
-
-        # צור dislike חדש
-        dislike = ArticleLike(
-            article_id=article_id,
-            user_id=user_id,
-            is_like=False # <-- חשוב: מגדירים כ-False
-        )
-        self.db.add(dislike)
-        self.db.commit()
-        return True
-
-    def remove_dislike(self, article_id: int, user_id: int) -> bool:
-        """
-        הסרת דיסלייק.
-        מחזיר True אם הדיסלייק הוסר, False אם לא היה קיים.
-        """
-        dislike = self.db.query(ArticleLike).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.user_id == user_id,
-            ArticleLike.is_like == False
-        ).first()
-
-        if not dislike:
-            return False
-
-        self.db.delete(dislike)
-        self.db.commit()
-        return True
-
-    # --- פונקציות לקבלת סטטוס ---
+    # ========================================
+    # Helper Methods for Stats
+    # ========================================
 
     def _get_likes_count(self, article_id: int) -> int:
-        """כמות לייקים למאמר"""
-        return self.db.query(func.count(ArticleLike.id)).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.is_like == True
-        ).scalar() or 0
+        """Count total likes for an article"""
+        try:
+            count = self.db.query(func.count(ArticleLike.id)).filter(
+                ArticleLike.article_id == article_id,
+                ArticleLike.is_like == True
+            ).scalar()
+            return count or 0
+        except SQLAlchemyError as e:
+            print(f"❌ DB Error in _get_likes_count for article {article_id}: {e}")
+            traceback.print_exc()
+            return 0
 
     def _get_dislikes_count(self, article_id: int) -> int:
-        """כמות דיסלייקים למאמר"""
-        return self.db.query(func.count(ArticleLike.id)).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.is_like == False
-        ).scalar() or 0
+        """Count total dislikes for an article"""
+        try:
+            count = self.db.query(func.count(ArticleLike.id)).filter(
+                ArticleLike.article_id == article_id,
+                ArticleLike.is_like == False
+            ).scalar()
+            return count or 0
+        except SQLAlchemyError as e:
+            print(f"❌ DB Error in _get_dislikes_count for article {article_id}: {e}")
+            traceback.print_exc()
+            return 0
 
-    def _has_user_liked(self, article_id: int, user_id: int) -> bool:
-        """האם משתמש ספציפי אהב מאמר"""
-        return self.db.query(ArticleLike).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.user_id == user_id,
-            ArticleLike.is_like == True
-        ).first() is not None
-
-    def _has_user_disliked(self, article_id: int, user_id: int) -> bool:
-        """האם משתמש ספציפי לא אהב מאמר"""
-        return self.db.query(ArticleLike).filter(
-            ArticleLike.article_id == article_id,
-            ArticleLike.user_id == user_id,
-            ArticleLike.is_like == False
-        ).first() is not None
+    def _get_user_reaction(self, article_id: int, user_id: int) -> Optional[bool]:
+        """
+        Get user's reaction to an article.
+        Returns: True (liked), False (disliked), None (no reaction)
+        """
+        try:
+            reaction = self.db.query(ArticleLike.is_like).filter(
+                ArticleLike.article_id == article_id,
+                ArticleLike.user_id == user_id
+            ).first()
+            
+            return reaction[0] if reaction else None
+        except SQLAlchemyError as e:
+            print(f"❌ DB Error in _get_user_reaction for article {article_id}, user {user_id}: {e}")
+            traceback.print_exc()
+            return None
 
     def get_article_stats(self, article_id: int, user_id: Optional[int] = None) -> Dict:
         """
-        סטטיסטיקות מאמר מלאות.
-        אם user_id מסופק, כולל מידע האם המשתמש הספציפי אהב/לא אהב.
+        Get full stats for an article.
+        Returns likes count, dislikes count, and user's reaction status.
         """
         likes_count = self._get_likes_count(article_id)
         dislikes_count = self._get_dislikes_count(article_id)
-
+        
         user_liked = False
         user_disliked = False
-
+        
         if user_id is not None:
-            user_liked = self._has_user_liked(article_id, user_id)
-            user_disliked = self._has_user_disliked(article_id, user_id)
-
-        return {
+            user_reaction = self._get_user_reaction(article_id, user_id)
+            if user_reaction is True:
+                user_liked = True
+            elif user_reaction is False:
+                user_disliked = True
+        
+        stats = {
+            "article_id": article_id,
             "likes_count": likes_count,
             "dislikes_count": dislikes_count,
             "user_liked": user_liked,
             "user_disliked": user_disliked,
             "total_reactions": likes_count + dislikes_count
         }
+        
+        print(f"📊 Stats for article {article_id}: {stats}")
+        return stats
 
-# --- נשאיר את השם הזה לתאימות עם הקוד שהשתמש בו קודם ---
+
+# Maintain backward compatibility
 LikeService = LikesService

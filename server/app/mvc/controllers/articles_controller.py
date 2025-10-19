@@ -311,18 +311,26 @@ def delete_article(
 @router.post("/articles/batch-stats")
 def batch_stats(
     ids: List[int] = Body(..., embed=True), 
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """סטטיסטיקות לייקים למספר מאמרים"""
-    stats = LikeService(db).batch_stats(ids)
-    return stats
+    if not ids:
+        return {}
+    
+    service = LikeService(db)
+    results = {}
+    for article_id in ids:
+        results[str(article_id)] = service.get_article_stats(article_id, current_user.id)
+    return results
 
 
 @router.get("/articles/{article_id}/stats")
 def article_stats(
-    article_id: int, 
+    article_id: int,
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """סטטיסטיקות לייקים למאמר יחיד"""
-    stats = LikeService(db).single_stats(article_id)
+    stats = LikeService(db).get_article_stats(article_id, current_user.id)
     return stats
