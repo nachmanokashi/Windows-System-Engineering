@@ -1,8 +1,3 @@
-# desktop/newsdesk/mvp/view/components/weather/weather_component.py
-"""
-Weather Component - תחזית מזג אוויר עם גרפים
-"""
-
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QPushButton, QFrame, QScrollArea, QSizePolicy, QGridLayout

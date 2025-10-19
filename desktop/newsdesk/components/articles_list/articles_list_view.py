@@ -13,7 +13,7 @@ from PySide6.QtGui import QFont, QColor # Import QColor
 from typing import List, Dict, Any
 from datetime import datetime
 
-from newsdesk.mvp.view.components.base_component import BaseComponent
+from newsdesk.components.base_component import BaseComponent
 
 class ArticlesListComponent(BaseComponent):
     """Component for displaying the list of articles."""

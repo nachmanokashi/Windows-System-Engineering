@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, QThread, Signal
 from typing import TYPE_CHECKING, Optional, List, Dict, Any
 
 if TYPE_CHECKING:
-    from newsdesk.mvp.view.components.articles_list.articles_list_view import ArticlesListComponent
+    from newsdesk.components.articles_list.articles_list_view import ArticlesListComponent
 
 from newsdesk.infra.http.news_service_http import HttpNewsService
 

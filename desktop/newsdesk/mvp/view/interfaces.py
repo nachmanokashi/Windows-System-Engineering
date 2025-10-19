@@ -1,6 +1,0 @@
-from typing import Protocol, List
-from newsdesk.mvp.model.article import Article
-
-class IArticlesView(Protocol):
-    def show_items(self, items: List[Article]) -> None: ...
-    def show_error(self, message: str) -> None: ...

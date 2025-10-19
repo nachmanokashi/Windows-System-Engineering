@@ -11,12 +11,12 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QIcon
 
 from newsdesk.mvp.view.microfrontend_manager import MicrofrontendManager
-from newsdesk.mvp.view.components.articles_list.articles_list_view import ArticlesListComponent
-from newsdesk.mvp.view.components.articles_list.articles_list_presenter import ArticlesListPresenter
-from newsdesk.mvp.view.components.article_details.article_details_view import ArticleDetailsComponent
-from newsdesk.mvp.view.components.article_details.article_details_presenter import ArticleDetailsPresenter
-from newsdesk.mvp.view.components.weather.weather_component import WeatherComponent
-from newsdesk.mvp.view.components.weather.weather_presenter import WeatherPresenter
+from newsdesk.components.articles_list.articles_list_view import ArticlesListComponent
+from newsdesk.components.articles_list.articles_list_presenter import ArticlesListPresenter
+from newsdesk.components.article_details.article_details_view import ArticleDetailsComponent
+from newsdesk.components.article_details.article_details_presenter import ArticleDetailsPresenter
+from newsdesk.components.weather.weather_component import WeatherComponent
+from newsdesk.components.weather.weather_presenter import WeatherPresenter
 
 from newsdesk.infra.http.news_api_client import NewsApiClient
 from newsdesk.infra.http.news_service_http import HttpNewsService

@@ -12,7 +12,7 @@ from PySide6.QtGui import QFont, QPixmap, QColor, QResizeEvent # הוספנו QR
 from typing import Dict, Any, Optional
 import httpx
 
-from newsdesk.mvp.view.components.base_component import BaseComponent
+from newsdesk.components.base_component import BaseComponent
 from newsdesk.mvp.model.article import Article
 
 # ImageLoaderThread (ללא שינוי)

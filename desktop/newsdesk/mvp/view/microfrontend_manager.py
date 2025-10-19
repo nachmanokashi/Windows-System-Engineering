@@ -10,7 +10,7 @@ MicrofrontendManager - מנהל את ה-Components
 """
 from typing import Dict, Type, Optional, Any
 from PySide6.QtWidgets import QWidget, QStackedWidget
-from newsdesk.mvp.view.components.base_component import BaseComponent
+from newsdesk.components.base_component import BaseComponent
 
 
 class MicrofrontendManager:
