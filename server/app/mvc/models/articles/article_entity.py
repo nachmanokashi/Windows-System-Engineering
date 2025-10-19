@@ -1,27 +1,24 @@
-import uuid
-from sqlalchemy import Column, String, DateTime, Text, func, Integer
-from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
-from sqlalchemy.orm import relationship
-from app.core.db import Base
+# server/app/mvc/models/articles/article_entity.py
+from sqlalchemy import Column, Integer, String, Text, DateTime
+from datetime import datetime
+from app.mvc.models.base import Base  # ✅ ייבוא מ-Base מרכזי
+
 
 class Article(Base):
     __tablename__ = "articles"
-
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    title = Column(String(300), nullable=False, index=True)
-    summary = Column(Text, nullable=True)
-    body = Column(Text, nullable=True)
-    url = Column(String(500), nullable=False, unique=True)
-    image_url = Column(String(500), nullable=False)  
-    published_at = Column(DateTime, nullable=True, index=True)
-    created_at = Column(DateTime, nullable=False, default=func.getdate())
-    content = Column(Text)               
-    thumb_url = Column(String(500))      
-
-    category = Column(String(100), nullable=False, index=True)
-    source = Column(String(100), nullable=True)
     
-    # AI Analysis fields
-    sentiment_score = Column(String(50), nullable=True)  
-    sentiment_confidence = Column(String(10), nullable=True)  
-    entities_json = Column(Text, nullable=True)  
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(500), nullable=False, index=True)
+    summary = Column(Text)
+    content = Column(Text)
+    url = Column(String(1000), unique=True, nullable=False)
+    source = Column(String(200))
+    category = Column(String(100), index=True)
+    image_url = Column(String(1000))
+    thumb_url = Column(String(1000))
+    published_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<Article(id={self.id}, title='{self.title[:30]}...')>"

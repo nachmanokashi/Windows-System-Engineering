@@ -1,6 +1,6 @@
-# app/mvc/models/users/user_entity.py
 from sqlalchemy import Column, String, DateTime, Boolean, Integer, func
 from app.core.db import Base
+from app.mvc.models.base import Base  
 
 class User(Base):
     __tablename__ = "users"

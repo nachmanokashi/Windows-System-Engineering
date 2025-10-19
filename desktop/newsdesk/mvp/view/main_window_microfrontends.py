@@ -15,10 +15,11 @@ from newsdesk.mvp.view.components.articles_list.articles_list_view import Articl
 from newsdesk.mvp.view.components.articles_list.articles_list_presenter import ArticlesListPresenter
 from newsdesk.mvp.view.components.article_details.article_details_view import ArticleDetailsComponent
 from newsdesk.mvp.view.components.article_details.article_details_presenter import ArticleDetailsPresenter
+from newsdesk.mvp.view.components.weather.weather_component import WeatherComponent
+from newsdesk.mvp.view.components.weather.weather_presenter import WeatherPresenter
 
 from newsdesk.infra.http.news_api_client import NewsApiClient
 from newsdesk.infra.http.news_service_http import HttpNewsService
-# --- תיקון הייבוא כאן ---
 from newsdesk.infra.http.likes_service_http import HttpLikesService
 
 
@@ -37,7 +38,6 @@ class MainWindowMicrofrontends(QMainWindow):
 
         # Services
         self.news_service = HttpNewsService(api_client)
-        # --- יצירת שירות הלייקים נשארת זהה ---
         self.likes_service = HttpLikesService(api_client)
 
         self.setWindowTitle("NewsDesk - Microfrontends")
@@ -72,7 +72,6 @@ class MainWindowMicrofrontends(QMainWindow):
         main_layout.addWidget(content_area, 1)
 
     def _create_sidebar(self) -> QWidget:
-        # (קוד זהה לקודם - ליצירת ה-Sidebar)
         sidebar = QFrame()
         sidebar.setFrameShape(QFrame.Shape.StyledPanel)
         sidebar.setStyleSheet("QFrame { background-color: #2c3e50; border-right: 2px solid #34495e; }")
@@ -80,32 +79,71 @@ class MainWindowMicrofrontends(QMainWindow):
         layout = QVBoxLayout(sidebar)
         layout.setContentsMargins(10, 20, 10, 20)
         layout.setSpacing(10)
+        
         logo_label = QLabel("📰 NewsDesk")
         logo_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         logo_label.setStyleSheet("color: white; padding: 10px;")
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(logo_label)
+        
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
         separator.setStyleSheet("background-color: #34495e;")
         layout.addWidget(separator)
-        nav_style = """ QPushButton { background-color: transparent; color: white; border: none; border-radius: 5px; padding: 12px; text-align: left; font-size: 14px; font-weight: bold; } QPushButton:hover { background-color: #34495e; } QPushButton:pressed { background-color: #1abc9c; } QPushButton:checked { background-color: #16a085; } """
+        
+        nav_style = """
+            QPushButton {
+                background-color: transparent;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 12px;
+                text-align: left;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #34495e;
+            }
+            QPushButton:pressed {
+                background-color: #1abc9c;
+            }
+            QPushButton:checked {
+                background-color: #16a085;
+            }
+        """
+        
+        # Articles button
         self.nav_articles_btn = QPushButton("📄 Articles")
         self.nav_articles_btn.setStyleSheet(nav_style)
         self.nav_articles_btn.setCheckable(True)
         self.nav_articles_btn.clicked.connect(lambda: self.navigate_to("articles_list"))
         layout.addWidget(self.nav_articles_btn)
+        
+        # Weather button
+        self.nav_weather_btn = QPushButton("🌤️ Weather")
+        self.nav_weather_btn.setStyleSheet(nav_style)
+        self.nav_weather_btn.setCheckable(True)
+        self.nav_weather_btn.clicked.connect(lambda: self.navigate_to("weather"))
+        layout.addWidget(self.nav_weather_btn)
+        
+        # Charts button
         self.nav_charts_btn = QPushButton("📊 Charts")
         self.nav_charts_btn.setStyleSheet(nav_style)
         self.nav_charts_btn.setCheckable(True)
         self.nav_charts_btn.clicked.connect(lambda: self.show_coming_soon("Charts"))
         layout.addWidget(self.nav_charts_btn)
+        
+        # AI Chat button
         self.nav_chat_btn = QPushButton("💬 AI Chat")
         self.nav_chat_btn.setStyleSheet(nav_style)
         self.nav_chat_btn.setCheckable(True)
         self.nav_chat_btn.clicked.connect(lambda: self.show_coming_soon("AI Chat"))
         layout.addWidget(self.nav_chat_btn)
+        
         layout.addStretch()
+        
+        # User info
         user_frame = QFrame()
         user_frame.setStyleSheet("QFrame { background-color: #34495e; border-radius: 5px; padding: 10px; }")
         user_layout = QVBoxLayout(user_frame)
@@ -118,10 +156,25 @@ class MainWindowMicrofrontends(QMainWindow):
             admin_badge.setStyleSheet("color: #f39c12; font-size: 11px;")
             user_layout.addWidget(admin_badge)
         layout.addWidget(user_frame)
+        
+        # Logout button
         logout_btn = QPushButton("🚪 Logout")
-        logout_btn.setStyleSheet("QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 5px; padding: 10px; font-weight: bold; } QPushButton:hover { background-color: #c0392b; }")
+        logout_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+        """)
         logout_btn.clicked.connect(self.on_logout_clicked)
         layout.addWidget(logout_btn)
+        
         return sidebar
 
     def _create_content_area(self) -> QWidget:
@@ -137,21 +190,24 @@ class MainWindowMicrofrontends(QMainWindow):
         self.manager = MicrofrontendManager(self.stacked_widget)
         self.manager.register_component("articles_list", ArticlesListComponent)
         self.manager.register_component("article_details", ArticleDetailsComponent)
+        self.manager.register_component("weather", WeatherComponent)
         self.manager.container.currentChanged.connect(self._on_component_changed)
 
     def _on_component_changed(self, index: int) -> None:
         print(f"Main window: Component changed to index {index}")
         current_component = self.stacked_widget.widget(index)
 
-        if not isinstance(current_component, (ArticlesListComponent, ArticleDetailsComponent)):
-             print(f"Main window: Widget at index {index} is not a recognized component.")
-             self._update_active_nav_button(current_component)
-             return
+        if not isinstance(current_component, (ArticlesListComponent, ArticleDetailsComponent, WeatherComponent)):
+            print(f"Main window: Widget at index {index} is not a recognized component.")
+            self._update_active_nav_button(current_component)
+            return
 
         print(f"Main window: Current component is {type(current_component).__name__}")
         self._update_active_nav_button(current_component)
 
         needs_initial_load = False
+        
+        # Articles List Component
         if isinstance(current_component, ArticlesListComponent):
             if not current_component.presenter:
                 print("Main window: Connecting ArticlesListPresenter...")
@@ -163,27 +219,40 @@ class MainWindowMicrofrontends(QMainWindow):
                 print("Main window: Triggering initial data load for ArticlesListComponent.")
                 current_component.load_initial_data()
             else:
-                 print("Main window: ArticlesListComponent already has a presenter.")
+                print("Main window: ArticlesListComponent already has a presenter.")
 
+        # Article Details Component
         elif isinstance(current_component, ArticleDetailsComponent):
             if not current_component.presenter:
                 print("Main window: Connecting ArticleDetailsPresenter...")
                 presenter = ArticleDetailsPresenter(current_component, self.news_service)
-                # ודא ששירות הלייקים מוזרק כאן
                 presenter.likes_service = self.likes_service
                 current_component.presenter = presenter
                 current_component.back_requested.connect(self.on_back_to_list_requested)
+        
+        # Weather Component
+        elif isinstance(current_component, WeatherComponent):
+            if not current_component._presenter:
+                print("Main window: Connecting WeatherPresenter...")
+                presenter = WeatherPresenter(self.api_client)
+                presenter.set_view(current_component)
+                current_component.set_presenter(presenter)
+                current_component.back_requested.connect(self.on_back_to_list_requested)
+                # טען נתונים
+                current_component.on_mount()
 
     def _update_active_nav_button(self, current_component: QWidget = None):
         if current_component is None:
-             current_component = self.manager.get_current_component()
+            current_component = self.manager.get_current_component()
 
         is_articles = isinstance(current_component, ArticlesListComponent)
         is_details = isinstance(current_component, ArticleDetailsComponent)
+        is_weather = isinstance(current_component, WeatherComponent)
 
-        print(f"Main window: Updating active nav button. Current is ArticlesList: {is_articles}, Details: {is_details}")
+        print(f"Main window: Updating nav buttons - Articles: {is_articles}, Details: {is_details}, Weather: {is_weather}")
 
         self.nav_articles_btn.setChecked(is_articles or is_details)
+        self.nav_weather_btn.setChecked(is_weather)
         self.nav_charts_btn.setChecked(False)
         self.nav_chat_btn.setChecked(False)
 
@@ -205,7 +274,7 @@ class MainWindowMicrofrontends(QMainWindow):
         )
         sender = self.sender()
         if sender and isinstance(sender, QPushButton) and sender.isCheckable():
-             sender.setChecked(False)
+            sender.setChecked(False)
         self._update_active_nav_button()
 
     def on_logout_clicked(self) -> None:
@@ -215,9 +284,9 @@ class MainWindowMicrofrontends(QMainWindow):
         )
         if reply == QMessageBox.StandardButton.Yes:
             for component_name, component_instance in self.manager._component_instances.items():
-                 if hasattr(component_instance, 'presenter') and component_instance.presenter:
-                     if hasattr(component_instance.presenter, 'cleanup'):
-                         print(f"Main window: Cleaning up presenter for {component_name}")
-                         component_instance.presenter.cleanup()
+                if hasattr(component_instance, 'presenter') and component_instance.presenter:
+                    if hasattr(component_instance.presenter, 'cleanup'):
+                        print(f"Main window: Cleaning up presenter for {component_name}")
+                        component_instance.presenter.cleanup()
             self.logout_clicked.emit()
             self.close()

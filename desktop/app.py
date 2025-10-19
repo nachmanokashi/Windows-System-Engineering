@@ -6,7 +6,6 @@ from newsdesk.infra.http.auth_service_http import HttpAuthService
 from newsdesk.infra.auth.auth_manager import get_auth_manager
 from newsdesk.mvp.view.login_window import LoginWindow
 from newsdesk.mvp.presenter.login_presenter import LoginPresenter
-
 from newsdesk.mvp.view.main_window_microfrontends import MainWindowMicrofrontends
 
 
@@ -43,7 +42,8 @@ def main() -> None:
         username = user_data.get("username", "User") if user_data else "User"
         is_admin = user_data.get("is_admin", False) if user_data else False
         
-        # ← NEW: יצירת MainWindow החדש עם Microfrontends
+        # יצירת MainWindow עם Microfrontends
+        # הרישום של Weather מתבצע אוטומטית בתוך MainWindow!
         main_window = MainWindowMicrofrontends(
             api_client=api_client,
             username=username,

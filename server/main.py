@@ -5,6 +5,7 @@ from app.core.db import Base, engine
 from app.mvc.controllers import health_controller
 from app.mvc.controllers import articles_controller, auth_controller, llm_controller, likes_controller
 from fastapi.staticfiles import StaticFiles
+from app.gateways.weather_api_gateway import WeatherAPIGateway
 
 settings = get_settings()
 
@@ -41,6 +42,26 @@ def root():
         "docs": "/docs"
     }
 
+@app.get("/api/v1/weather/current")
+def get_current_weather(city: str = None):
+    """מזג אוייר נוכחי"""
+    try:
+        gateway = WeatherAPIGateway()
+        weather = gateway.get_current_weather(city)
+        return weather
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/v1/weather/daily")
+def get_daily_forecast(city: str = None):
+    """תחזית ל-5 ימים"""
+    try:
+        gateway = WeatherAPIGateway()
+        forecast = gateway.get_daily_forecast(city)
+        return {"daily_forecast": forecast}
+    except Exception as e:
+        return {"error": str(e)}
+    
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

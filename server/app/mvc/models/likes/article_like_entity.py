@@ -1,18 +1,22 @@
-# app/mvc/models/likes/article_like_entity.py
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Boolean, func, UniqueConstraint
-from sqlalchemy.orm import relationship
-from app.core.db import Base
+from sqlalchemy import Column, Integer, Boolean, ForeignKey, DateTime
+from datetime import datetime
+from app.mvc.models.base import Base  # ✅ ייבוא מ-Base מרכזי
+
 
 class ArticleLike(Base):
     __tablename__ = "article_likes"
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    article_id = Column(Integer, ForeignKey('articles.id', ondelete='CASCADE'), nullable=False)
-    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    is_like = Column(Boolean, nullable=False, default=True)  # True=Like, False=Dislike
-    created_at = Column(DateTime, nullable=False, default=func.getdate())
+    id = Column(Integer, primary_key=True, index=True)
     
-    # Unique constraint - משתמש יכול להגיב רק פעם אחת (like או dislike)
-    __table_args__ = (
-        UniqueConstraint('article_id', 'user_id', name='uq_article_user_reaction'),
-    )
+    # Foreign Keys - עכשיו יעבוד כי Article וגם ArticleLike משתמשים באותו Base!
+    article_id = Column(Integer, ForeignKey("articles.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # True = like, False = dislike
+    is_like = Column(Boolean, nullable=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        reaction = "👍" if self.is_like else "👎"
+        return f"<ArticleLike(id={self.id}, article={self.article_id}, user={self.user_id}, {reaction})>"
