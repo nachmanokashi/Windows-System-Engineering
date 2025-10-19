@@ -2,12 +2,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr, Field # <-- הוספנו ייבוא
+from typing import Optional # <-- הוספנו ייבוא
+
 from app.core.db import get_db
 from app.core.auth_utils import get_current_user, get_current_active_user
 from app.mvc.models.users.user_service import UserService
 from app.mvc.models.users.user_repository import UserRepository
 from app.mvc.models.users.user_schemas import (
-    UserCreate, UserRead, UserLogin, Token, UserUpdate
+    UserRead, UserLogin, Token, UserUpdate
 )
 from app.mvc.models.users.user_entity import User
 
@@ -20,17 +23,21 @@ from app.event_sourcing.events import (
 
 router = APIRouter(tags=["auth"])
 
+# --- הוספנו מודל קלט חדש עבור רישום ---
+class UserRegisterPayload(BaseModel):
+    username: str = Field(..., min_length=3, max_length=100)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    full_name: Optional[str] = None
 
 # ============================================
-# Register - עם Event Sourcing
+# Register - עכשיו מקבל JSON Body
 # ============================================
 
-@router.post("/register")
+@router.post("/auth/register")
+# --- שינינו את החתימה כאן ---
 def register(
-    username: str,
-    email: str,
-    password: str,
-    full_name: str = None,
+    payload: UserRegisterPayload, # מקבלים את הנתונים כמודל מגוף הבקשה
     db: Session = Depends(get_db)
 ):
     """
@@ -38,49 +45,42 @@ def register(
     """
     repo = UserRepository(db)
     event_store = get_event_store(db)
-    
-    # בדוק אם המשתמש כבר קיים
-    if repo.get_by_username(username):
+
+    # --- משתמשים בנתונים מה-payload ---
+    if repo.get_by_username(payload.username):
         raise HTTPException(status_code=400, detail="Username already exists")
-    
-    if repo.get_by_email(email):
+
+    if repo.get_by_email(payload.email):
         raise HTTPException(status_code=400, detail="Email already exists")
-    
+
     try:
-        # Hash את הסיסמה
         from app.core.auth_utils import get_password_hash
-        hashed_pwd = get_password_hash(password)
-        
-        # צור משתמש חדש
+        hashed_pwd = get_password_hash(payload.password)
+
         user_data = {
-            "username": username,
-            "email": email,
+            "username": payload.username,
+            "email": payload.email,
             "hashed_password": hashed_pwd,
-            "full_name": full_name,
+            "full_name": payload.full_name,
             "is_active": True,
             "is_admin": False
         }
-        
+
         user = repo.create(user_data)
-        
-        # שמור Event
+
         event = UserRegisteredEvent(
             user_id=user.id,
-            username=username,
-            email=email,
-            full_name=full_name
+            username=payload.username, # שימוש בנתוני payload
+            email=payload.email,       # שימוש בנתוני payload
+            full_name=payload.full_name # שימוש בנתוני payload
         )
-        
         event_id = event_store.save_event(event)
-        
+
         print(f"✅ User registered with ID: {user.id}, Event ID: {event_id}")
-        
-        return {
-            "message": "User registered successfully",
-            "user_id": user.id,
-            "username": user.username,
-            "event_id": event_id
-        }
+
+        # מחזירים תגובה מעט שונה, רק את הנתונים הבסיסיים
+        return UserRead.model_validate(user) # המרה למודל קריאה
+
     except Exception as e:
         print(f"Error during registration: {e}")
         raise HTTPException(
@@ -90,12 +90,12 @@ def register(
 
 
 # ============================================
-# Login - עם Event Sourcing
+# Login (ללא שינוי מהותי בקוד הפנימי, רק בחתימה של login)
 # ============================================
 
 @router.post("/auth/login", response_model=Token)
 def login(
-    payload: UserLogin, 
+    payload: UserLogin, # כבר היה מוגדר נכון
     request: Request,
     db: Session = Depends(get_db)
 ):
@@ -105,25 +105,19 @@ def login(
     try:
         service = UserService(db)
         event_store = get_event_store(db)
-        
-        # התחבר
-        result = service.login(payload.username, payload.password)
-        
-        # קבל את פרטי המשתמש
+        result = service.login(payload.username, payload.password) # שימוש בנתוני payload
         repo = UserRepository(db)
-        user = repo.get_by_username(payload.username)
-        
+        user = repo.get_by_username(payload.username) # שימוש בנתוני payload
+
         if user:
-            # שמור Event
             event = UserLoggedInEvent(
                 user_id=user.id,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent")
             )
-            
             event_id = event_store.save_event(event)
             print(f"✅ Login event saved with ID: {event_id}")
-        
+
         return {
             "access_token": result["access_token"],
             "token_type": result["token_type"]
@@ -132,10 +126,7 @@ def login(
         raise
     except Exception as e:
         print(f"Error during login: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Login failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
 
 @router.post("/auth/login/form", response_model=Token)
@@ -147,28 +138,23 @@ def login_form(
     """
     התחברות דרך OAuth2 form (לשימוש עם Swagger UI) - עם Event Sourcing!
     """
+    # קוד זה נשאר זהה כי הוא מקבל Form Data ולא JSON
     try:
         service = UserService(db)
         event_store = get_event_store(db)
-        
-        # התחבר
         result = service.login(form_data.username, form_data.password)
-        
-        # קבל את פרטי המשתמש
         repo = UserRepository(db)
         user = repo.get_by_username(form_data.username)
-        
+
         if user:
-            # שמור Event
             event = UserLoggedInEvent(
                 user_id=user.id,
                 ip_address=request.client.host if request and request.client else None,
                 user_agent=request.headers.get("user-agent") if request else None
             )
-            
             event_id = event_store.save_event(event)
             print(f"✅ Login event saved with ID: {event_id}")
-        
+
         return {
             "access_token": result["access_token"],
             "token_type": result["token_type"]
@@ -177,10 +163,7 @@ def login_form(
         raise
     except Exception as e:
         print(f"Error during form login: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Login failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
 
 # ============================================
@@ -208,16 +191,11 @@ def update_current_user(
             full_name=payload.full_name,
             password=payload.password
         )
-        
         if not updated_user:
             raise HTTPException(status_code=404, detail="User not found")
-        
         return updated_user
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error updating user: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to update user: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to update user: {str(e)}")
