@@ -1,7 +1,3 @@
-# server/app/services/classification_service.py
-"""
-Classification Service - סיווג אוטומטי של מאמרים עם Hugging Face
-"""
 
 from typing import Dict, List, Any
 import requests
