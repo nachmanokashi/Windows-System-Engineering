@@ -1,4 +1,3 @@
-# client/newsdesk/mvp/view/main_window_microfrontends.py
 """
 MainWindow עם Microfrontends
 Container ראשי שמנהל את כל ה-Components
@@ -19,6 +18,11 @@ from newsdesk.components.article_details.article_details_presenter import Articl
 from newsdesk.components.weather.weather_component import WeatherComponent
 from newsdesk.components.weather.weather_presenter import WeatherPresenter
 
+# --- רכיבי אדמין ---
+# תיקון קריטי: הייבוא משתמש כעת בשם המחלקה הנכון AdminPanelComponent
+from newsdesk.components.admin_panel.admin_panel_view import AdminPanelComponent
+from newsdesk.components.admin_panel.admin_panel_presenter import AdminPanelPresenter
+from newsdesk.infra.http.admin_service_http import AdminServiceHttp
 
 from newsdesk.infra.http.news_api_client import NewsApiClient
 from newsdesk.infra.http.news_service_http import HttpNewsService
@@ -32,7 +36,7 @@ class MainWindowMicrofrontends(QMainWindow):
     logout_clicked = Signal()
 
     def __init__(self, api_client: NewsApiClient, username: str = "User", is_admin: bool = False):
-        super().__init__()
+        super().__init__(None) # (Parent changed to None)
 
         self.api_client = api_client
         self.username = username
@@ -41,6 +45,8 @@ class MainWindowMicrofrontends(QMainWindow):
         # Services
         self.news_service = HttpNewsService(api_client)
         self.likes_service = HttpLikesService(api_client)
+        # --- הוספת AdminService ---
+        self.admin_service = AdminServiceHttp(api_client)
 
         self.setWindowTitle("NewsDesk - Microfrontends")
 
@@ -118,14 +124,20 @@ class MainWindowMicrofrontends(QMainWindow):
         self.nav_weather_btn.clicked.connect(lambda: self.navigate_to("weather"))
         layout.addWidget(self.nav_weather_btn)
 
-        # --- הסרנו את כפתור Charts ---
-
         # AI Chat button
         self.nav_chat_btn = QPushButton("💬 AI Chat")
         self.nav_chat_btn.setStyleSheet(nav_style)
         self.nav_chat_btn.setCheckable(True)
         self.nav_chat_btn.clicked.connect(lambda: self.show_coming_soon("AI Chat"))
         layout.addWidget(self.nav_chat_btn)
+
+        # --- כפתור Admin Panel (רק לאדמין) ---
+        if self.is_admin:
+            self.nav_admin_btn = QPushButton("⚙️ Admin Panel")
+            self.nav_admin_btn.setStyleSheet(nav_style)
+            self.nav_admin_btn.setCheckable(True)
+            self.nav_admin_btn.clicked.connect(lambda: self.navigate_to("admin_panel"))
+            layout.addWidget(self.nav_admin_btn)
 
         layout.addStretch()
 
@@ -167,27 +179,40 @@ class MainWindowMicrofrontends(QMainWindow):
         self.manager.register_component("articles_list", ArticlesListComponent)
         self.manager.register_component("article_details", ArticleDetailsComponent)
         self.manager.register_component("weather", WeatherComponent)
+        
+        # --- רישום Admin Component (מותנה) ---
+        if self.is_admin:
+            # תיקון: רישום AdminPanelComponent - השם הנכון מהקובץ
+            self.manager.register_component("admin_panel", AdminPanelComponent)
+            
         self.manager.container.currentChanged.connect(self._on_component_changed)
 
     def _on_component_changed(self, index: int) -> None:
         print(f"Main window: Component changed to index {index}")
         current_component = self.stacked_widget.widget(index)
+        current_component_name = type(current_component).__name__ 
 
-        # --- הוספנו WeatherComponent לרשימת הרכיבים המוכרים ---
-        if not isinstance(current_component, (ArticlesListComponent, ArticleDetailsComponent, WeatherComponent)):
-             print(f"Main window: Widget at index {index} is not a recognized component.")
+        # רשימת כל הרכיבים המוכרים שיש להם Presenter שאנחנו מאתחלים
+        recognized_components = (
+            ArticlesListComponent, ArticleDetailsComponent, WeatherComponent, 
+            AdminPanelComponent # תיקון: שימוש ב-AdminPanelComponent
+        )
+
+        if not isinstance(current_component, recognized_components):
+             print(f"Main window: Widget at index {index} is not a recognized component ({current_component_name}).")
              self._update_active_nav_button(current_component)
              return
 
-        print(f"Main window: Current component is {type(current_component).__name__}")
+        print(f"Main window: Current component is {current_component_name}")
         self._update_active_nav_button(current_component)
 
         needs_initial_load = False
+
         # Articles List Component
         if isinstance(current_component, ArticlesListComponent):
             if not current_component.presenter:
                 print("Main window: Connecting ArticlesListPresenter...")
-                presenter = ArticlesListPresenter(current_component, self.news_service, self.likes_service) # הוספנו likes_service
+                presenter = ArticlesListPresenter(current_component, self.news_service, self.likes_service) 
                 current_component.presenter = presenter
                 current_component.article_clicked.connect(self.on_article_clicked)
                 # חיבור סיגנלים חדשים ללייקים מהרשימה
@@ -208,19 +233,24 @@ class MainWindowMicrofrontends(QMainWindow):
                 presenter.likes_service = self.likes_service
                 current_component.presenter = presenter
                 current_component.back_requested.connect(self.on_back_to_list_requested)
-                # חיבור סיגנלים ללייקים מהפרטים (אם רוצים לטפל גם כאן)
-                # current_component.like_toggled.connect(...)
-                # current_component.dislike_toggled.connect(...)
 
         # Weather Component
         elif isinstance(current_component, WeatherComponent):
             if not current_component._presenter:
                 print("Main window: Connecting WeatherPresenter...")
-                presenter = WeatherPresenter(self.api_client) # WeatherPresenter משתמש ישירות ב-api_client
+                presenter = WeatherPresenter(self.api_client) 
                 presenter.set_view(current_component)
                 current_component.set_presenter(presenter)
                 current_component.back_requested.connect(self.on_back_to_list_requested)
                 current_component.on_mount() # טען נתונים
+                
+        # --- Admin Panel Component (חיבור Presenter) ---
+        elif isinstance(current_component, AdminPanelComponent): # תיקון: שימוש ב-AdminPanelComponent
+            if not current_component.presenter:
+                print("Main window: Connecting AdminPanelPresenter...")
+                presenter = AdminPanelPresenter(current_component, self.admin_service, self.news_service)
+                current_component.presenter = presenter
+                presenter.load_articles()
 
     def _update_active_nav_button(self, current_component: QWidget = None):
         if current_component is None: current_component = self.manager.get_current_component()
@@ -228,13 +258,17 @@ class MainWindowMicrofrontends(QMainWindow):
         is_articles = isinstance(current_component, ArticlesListComponent)
         is_details = isinstance(current_component, ArticleDetailsComponent)
         is_weather = isinstance(current_component, WeatherComponent)
+        is_admin_panel = isinstance(current_component, AdminPanelComponent) # תיקון: שימוש ב-AdminPanelComponent
 
-        print(f"Main window: Updating nav buttons - Articles: {is_articles}, Details: {is_details}, Weather: {is_weather}")
+        print(f"Main window: Updating nav buttons - Articles: {is_articles}, Details: {is_details}, Weather: {is_weather}, Admin: {is_admin_panel}")
 
         self.nav_articles_btn.setChecked(is_articles or is_details)
         self.nav_weather_btn.setChecked(is_weather)
-        # --- הסרנו את charts_btn ---
         self.nav_chat_btn.setChecked(False)
+        
+        # --- עדכון כפתור האדמין ---
+        if self.is_admin:
+            self.nav_admin_btn.setChecked(is_admin_panel)
 
     def navigate_to(self, component_name: str, **kwargs) -> None:
         print(f"Main window: Navigating to '{component_name}' with args: {kwargs}")
@@ -251,17 +285,22 @@ class MainWindowMicrofrontends(QMainWindow):
     def show_coming_soon(self, feature: str) -> None:
         QMessageBox.information(self, "Coming Soon", f"{feature} component is coming soon! 🚀")
         sender = self.sender()
-        if sender and isinstance(sender, QPushButton) and sender.isCheckable(): sender.setChecked(False)
-        self._update_active_nav_button()
+        if sender and isinstance(sender, QPushButton) and sender.isCheckable(): 
+            self._update_active_nav_button() 
+        else: 
+            self._update_active_nav_button()
 
     def on_logout_clicked(self) -> None:
         reply = QMessageBox.question(self, "Logout", "Are you sure you want to logout?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
+            # Cleanup for presenters
             for component_name, component_instance in self.manager._component_instances.items():
+                 # בדיקה עבור presenter רגיל
                  if hasattr(component_instance, 'presenter') and component_instance.presenter and hasattr(component_instance.presenter, 'cleanup'):
                      print(f"Main window: Cleaning up presenter for {component_name}")
                      component_instance.presenter.cleanup()
-                 elif hasattr(component_instance, '_presenter') and component_instance._presenter and hasattr(component_instance._presenter, 'cleanup'): # For weather
+                 # בדיקה עבור presenter עם _presenter (כמו weather)
+                 elif hasattr(component_instance, '_presenter') and component_instance._presenter and hasattr(component_instance._presenter, 'cleanup'):
                       print(f"Main window: Cleaning up presenter for {component_name} (weather style)")
                       component_instance._presenter.cleanup()
 

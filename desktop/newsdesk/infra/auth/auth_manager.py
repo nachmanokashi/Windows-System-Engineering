@@ -55,6 +55,10 @@ class AuthManager:
         """שם המשתמש"""
         return self._user_data.get("username") if self._user_data else None
 
+    @property
+    def is_admin(self) -> bool:
+            """האם המשתמש הוא מנהל (Admin)"""
+            return self._user_data.get("is_admin", False) if self._user_data else False
 
 # Singleton instance
 _auth_manager: Optional[AuthManager] = None

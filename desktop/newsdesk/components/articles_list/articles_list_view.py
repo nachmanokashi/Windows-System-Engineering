@@ -32,13 +32,10 @@ class ArticleCard(QFrame):
         if len(summary_text) > 100: summary_text = summary_text[:100] + "...";
         summary_label = QLabel(summary_text); summary_label.setWordWrap(True); summary_label.setStyleSheet("color: #7f8c8d; font-size: 12px;"); summary_label.setMaximumHeight(35); content_layout.addWidget(summary_label)
         content_layout.addStretch(1)
-        meta_likes_layout = QHBoxLayout(); meta_likes_layout.setSpacing(10)
-        source_label = QLabel(f"📰 {article_data.get('source', 'Unknown')}"); source_label.setStyleSheet("color: #95a5a6; font-size: 11px; font-weight: bold;"); meta_likes_layout.addWidget(source_label)
-        meta_likes_layout.addStretch(1)
-        self.like_button = QPushButton(""); self.like_button.setFixedSize(QSize(90, 28)); self.like_button.setCheckable(True); self.like_button.clicked.connect(self._on_like_clicked); meta_likes_layout.addWidget(self.like_button)
-        self.dislike_button = QPushButton(""); self.dislike_button.setFixedSize(QSize(100, 28)); self.dislike_button.setCheckable(True); self.dislike_button.clicked.connect(self._on_dislike_clicked); meta_likes_layout.addWidget(self.dislike_button)
-        content_layout.addLayout(meta_likes_layout); layout.addLayout(content_layout, 1)
-        self.update_stats(self.stats)
+        meta_layout = QHBoxLayout(); meta_layout.setSpacing(10)
+        source_label = QLabel(f"📰 {article_data.get('source', 'Unknown')}"); source_label.setStyleSheet("color: #95a5a6; font-size: 11px; font-weight: bold;"); meta_layout.addWidget(source_label)
+        meta_layout.addStretch(1)
+        content_layout.addLayout(meta_layout)
     def _set_icon(self, category: str): icon_map = {"sports": "⚽", "economy": "💰", "politics": "🏛️", "technology": "💻", "health": "⚕️", "science": "🔬", "environment": "🌳", "business": "💼"}; emoji = icon_map.get(category.lower(), "📰"); self.image_label.setText(emoji); icon_font = QFont(); icon_font.setPointSize(40); self.image_label.setFont(icon_font)
     def _on_like_clicked(self):
         try: self.like_toggled.emit(int(self.article_id)) if self.article_id is not None else None

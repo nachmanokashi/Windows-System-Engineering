@@ -3,230 +3,201 @@
 Admin Panel Presenter - לוגיקת ניהול מאמרים
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from PySide6.QtWidgets import QMessageBox
 
-from newsdesk.infra.http.admin_service_http import HttpAdminService
+from newsdesk.infra.http.admin_service_http import AdminServiceHttp
 from newsdesk.infra.http.news_service_http import HttpNewsService
-from newsdesk.components.admin_panel.admin_panel_view import AdminPanelView, ArticleFormDialog
+from newsdesk.components.admin_panel.admin_panel_view import AdminPanelComponent, ArticleFormDialog
 from newsdesk.mvp.presenter.base_presenter import BasePresenter
 
 
 class AdminPanelPresenter(BasePresenter):
     """Presenter לניהול Admin Panel"""
 
-    def __init__(self, view: AdminPanelView, admin_service: HttpAdminService, news_service: HttpNewsService):
+    def __init__(self, view: AdminPanelComponent, admin_service: AdminServiceHttp, news_service: HttpNewsService):
         super().__init__(view)
         self.view = view
         self.admin_service = admin_service
         self.news_service = news_service
         self.categories: List[str] = []
 
+        # שה-View ידע מי ה-presenter שלו
+        if hasattr(self.view, "set_presenter"):
+            self.view.set_presenter(self)
+
         self._connect_signals()
-        self._load_categories()
-        # טען רשימת מאמרים כבר בפתיחה לנוחות
+        self.load_categories()
         self.load_articles()
 
     # ------------------------------
     # Init / Signals / Bootstrap
     # ------------------------------
     def _connect_signals(self):
-        """חיבור signals"""
+        """חיבור signals מה-View ללוגיקה"""
         self.view.add_article_requested.connect(self.on_add_article)
-        self.view.edit_article_requested.connect(self.on_edit_article)
         self.view.delete_article_requested.connect(self.on_delete_article)
-        self.view.refresh_requested.connect(self.load_articles)
-        self.view.classify_all_requested.connect(self.on_classify_all)
+        self.view.edit_article_requested.connect(self.on_edit_article)
+        self.view.refresh_articles_requested.connect(self.load_articles)
+        self.view.classify_requested.connect(self.on_classify_article)
+        self.view.apply_classification_requested.connect(self.on_apply_classification)
+        self.view.batch_classify_requested.connect(self.on_batch_classify)
 
-    def _load_categories(self):
-        """טעינת רשימת קטגוריות"""
-        def on_success(resp: Dict[str, Any]):
-            # ה-backend מחזיר {"categories": [...]}; אם מגיע *רק* list, נטפל גם בזה
-            cats = resp.get("categories", resp if isinstance(resp, list) else [])
-            self.categories = list(cats or [])
-            print(f"✅ Loaded {len(self.categories)} categories")
+    # מאפשר ל-View לקרוא בעת on_mount
+    def attach_view(self, view: AdminPanelComponent) -> None:
+        self.view = view
+
+    def detach_view(self) -> None:
+        # מקום לשחרר מאזינים/משאבים אם צריך
+        pass
+
+    # ------------------------------
+    # Data (categories/articles)
+    # ------------------------------
+    def load_categories(self):
+        """טען קטגוריות זמינות מה-Admin API (תומך גם ברשימה ישירה וגם ב-dict)."""
+        self.view.show_loading("Loading categories...")
+
+        def on_success(data):
+            # יכול להגיע כ-list[str] או כ-dict עם 'categories'
+            if isinstance(data, list):
+                cats = data
+            elif isinstance(data, dict):
+                cats = data.get("categories", [])
+            else:
+                cats = []
+
+            self.categories = cats or []
+            self.view.set_categories(self.categories)
+            self.view.hide_loading()
 
         def on_error(error: str):
-            print(f"❌ Failed to load categories: {error}")
-            self.categories = []
+            self.view.hide_loading()
+            self.view.show_error(f"Failed to load categories: {error}")
 
-        # הקריאה מתבצעת דרך שירות ה-Admin שממפה ל-/admin/categories
         self._start_worker(
             self.admin_service.get_available_categories,
             finished_slot=on_success,
             error_slot=on_error
         )
 
-    # ------------------------------
-    # Articles list
-    # ------------------------------
     def load_articles(self):
-        """טען רשימת מאמרים"""
-        self.view.show_loading("Loading articles...")
+        """טען רשימת מאמרים מלאה (תומך גם ב-list וגם ב-dict)."""
+        self.view.show_loading("Loading articles list...")
 
-        def on_success(response: Dict[str, Any]):
+        def on_articles_loaded(data):
             self.view.hide_loading()
-            # מוודאים תמיכה גם במבנים שונים: {items:[...]} או [...]
-            items = response.get("items") if isinstance(response, dict) else response
-            articles = items or []
+            if isinstance(data, list):
+                articles = data
+            elif isinstance(data, dict):
+                articles = data.get("articles", []) or data.get("data", [])
+            else:
+                articles = []
             self.view.display_articles(articles)
 
         def on_error(error: str):
             self.view.hide_loading()
-            self.view.show_error(f"Failed to load articles: {error}")
+            if "422" in str(error):
+                self.view.show_error("The requested 'limit' is not allowed by the server. Try a smaller value (<=100).")
+            else:
+                self.view.show_error(f"Failed to load articles: {error}")
 
-        # מניחים שהשירות תומך בפרמטרים page/page_size
         self._start_worker(
-            self.news_service.list_articles,
-            page=1,
-            page_size=100,
-            finished_slot=on_success,
-            error_slot=on_error
+            self.admin_service.get_all_articles,
+            finished_slot=on_articles_loaded,
+            error_slot=on_error,
+            limit=50
         )
 
     # ------------------------------
-    # Create
+    # CRUD Operations
     # ------------------------------
     def on_add_article(self):
-        """הוספת מאמר חדש"""
+        """פתח דיאלוג להוספת מאמר"""
         dialog = ArticleFormDialog(self.view, categories=self.categories)
 
-        # בטל חיבור ברירת המחדל של הכפתור בדיאלוג (אם קיים) וחבר לסיווג שלנו
-        try:
-            dialog.classify_btn.clicked.disconnect()
-        except Exception:
-            pass
-        dialog.classify_btn.clicked.connect(lambda: self._classify_in_dialog(dialog))
+        # אופציונלי: סיווג טיוטה מהדיאלוג (אם חיברת את הסיגנל בדיאלוג)
+        def _on_draft(payload: Dict[str, Any]):
+            try:
+                # אם יש שירות סיווג טיוטה – החלף; אחרת הדגמה פשוטה
+                res = {"category": "general", "confidence": 0.5}
+                dialog.show_classification_result(res["category"], res["confidence"])
+            except Exception as e:
+                dialog.show_classification_error(str(e))
 
-        if dialog.exec():
-            form_data = dialog.get_form_data()
+        if hasattr(dialog, "draft_classify_requested"):
+            dialog.draft_classify_requested.connect(_on_draft)
 
-            if not form_data["title"] or not form_data["content"]:
-                self.view.show_error("Title and Content are required!")
-                return
+        if dialog.exec() == ArticleFormDialog.Accepted:
+            data = dialog.get_data()
+            self._create_article(data)
 
-            self._create_article(form_data)
-
-    def _classify_in_dialog(self, dialog: ArticleFormDialog):
-        """סיווג AI בתוך הדיאלוג (לצורך UX מהיר לפני שמירה)"""
-        form_data = dialog.get_form_data()
-
-        if not form_data["title"]:
-            dialog.show_classification_error("Title is required for classification")
-            return
-
-        # Heuristic/Local quick classify (לא פוגע ב-backend)
-        def classify_worker():
-            title = (form_data["title"] or "").lower()
-            content = (form_data.get("content") or "").lower()
-            text = f"{title} {content}"
-
-            if any(w in text for w in ["tech", "ai", "software", "computer"]):
-                return {"category": "Technology", "confidence": 0.85}
-            if any(w in text for w in ["sport", "game", "player", "team"]):
-                return {"category": "Sports", "confidence": 0.80}
-            if any(w in text for w in ["health", "medical", "doctor"]):
-                return {"category": "Health", "confidence": 0.75}
-            if any(w in text for w in ["business", "economy", "market"]):
-                return {"category": "Business", "confidence": 0.70}
-            return {"category": "General", "confidence": 0.50}
-
-        def on_success(result: Dict[str, Any]):
-            dialog.show_classification_result(result["category"], result["confidence"])
-
-        def on_error(error: str):
-            dialog.show_classification_error(error)
-
-        self._start_worker(classify_worker, finished_slot=on_success, error_slot=on_error)
-
-    def _create_article(self, form_data: Dict[str, Any]):
-        """צור מאמר חדש דרך Admin API"""
-        self.view.show_loading("Creating article...")
+    def _create_article(self, data: Dict[str, Any]):
+        """שליחת יצירת מאמר חדש ל-backend"""
+        self.view.show_loading("Creating new article...")
 
         def on_success(response: Dict[str, Any]):
+            article_id = response.get("article_id") or response.get("id", "N/A")
             self.view.hide_loading()
-            article_id = response.get("article_id")
-            category = response.get("category")
-            self.view.show_success(f"Article #{article_id} created successfully!\nCategory: {category or 'N/A'}")
-            self.load_articles()  # רענון רשימה
+            self.view.show_success(f"Article #{article_id} created successfully!")
+            self.load_articles()
 
         def on_error(error: str):
             self.view.hide_loading()
             self.view.show_error(f"Failed to create article: {error}")
 
-        # ה-backend תומך ב-auto_classify אם לא בחרנו קטגוריה
         self._start_worker(
             self.admin_service.create_article,
-            title=form_data["title"],
-            summary=form_data["summary"],
-            content=form_data["content"],
-            url=form_data["url"],
-            source=form_data["source"],
-            category=form_data.get("category"),
-            image_url=form_data.get("image_url"),
-            auto_classify=form_data.get("auto_classify", True),
             finished_slot=on_success,
-            error_slot=on_error
+            error_slot=on_error,
+            **data
         )
 
-    # ------------------------------
-    # Edit / Update
-    # ------------------------------
     def on_edit_article(self, article_id: int):
-        """עריכת מאמר קיים"""
+        """טען מאמר לעריכה ופתח דיאלוג"""
         self.view.show_loading(f"Loading article #{article_id}...")
 
-        def on_article_loaded(article):
+        def on_article_loaded(data: Dict[str, Any]):
             self.view.hide_loading()
-
-            if not article:
-                self.view.show_error(f"Article #{article_id} not found")
+            article_data = data.get("article") if isinstance(data, dict) else data
+            if not article_data:
+                self.view.show_error(f"Article #{article_id} not found.")
                 return
-
-            # המרה ל-dict קל לעריכה
-            article_data = {
-                "id": getattr(article, "id", None) or article.get("id"),
-                "title": getattr(article, "title", None) or article.get("title", ""),
-                "summary": getattr(article, "summary", None) or article.get("summary", ""),
-                "content": getattr(article, "content", None) or article.get("content", ""),
-                "url": getattr(article, "url", None) or article.get("url", ""),
-                "source": getattr(article, "source", None) or article.get("source", ""),
-                "category": getattr(article, "category", None) or article.get("category"),
-                "image_url": getattr(article, "image_url", None) or article.get("image_url"),
-            }
 
             dialog = ArticleFormDialog(self.view, article_data=article_data, categories=self.categories)
 
-            # נשאיר את כפתור הסיווג בדיאלוג (היוריסטיקה המקומית) למקרה שרוצים לרענן קטגוריה לפני השמירה
-            try:
-                dialog.classify_btn.clicked.disconnect()
-            except Exception:
-                pass
-            dialog.classify_btn.clicked.connect(lambda: self._classify_in_dialog(dialog))
+            def _on_draft(payload: Dict[str, Any]):
+                try:
+                    res = {"category": "general", "confidence": 0.5}
+                    dialog.show_classification_result(res["category"], res["confidence"])
+                except Exception as e:
+                    dialog.show_classification_error(str(e))
 
-            if dialog.exec():
-                form_data = dialog.get_form_data()
-                self._update_article(article_id, form_data)
+            if hasattr(dialog, "draft_classify_requested"):
+                dialog.draft_classify_requested.connect(_on_draft)
+
+            if dialog.exec() == ArticleFormDialog.Accepted:
+                updated_data = dialog.get_data()
+                self._update_article(article_id, updated_data)
 
         def on_error(error: str):
             self.view.hide_loading()
-            self.view.show_error(f"Failed to load article: {error}")
+            self.view.show_error(f"Failed to load article for edit: {error}")
 
-        # HttpNewsService.get אמור להחזיר Article/Dict עבור ה-id
         self._start_worker(
-            self.news_service.get,
-            article_id=str(article_id),
+            self.admin_service.get_article_details,
+            article_id=article_id,
             finished_slot=on_article_loaded,
             error_slot=on_error
         )
 
-    def _update_article(self, article_id: int, form_data: Dict[str, Any]):
-        """עדכון מאמר"""
-        self.view.show_loading("Updating article...")
+    def _update_article(self, article_id: int, data: Dict[str, Any]):
+        """שליחת עדכון מאמר ל-backend"""
+        self.view.show_loading(f"Updating article #{article_id}...")
 
-        def on_success(_response: Dict[str, Any]):
+        def on_success(response: Dict[str, Any]):
             self.view.hide_loading()
-            self.view.show_success(f"Article #{article_id} updated successfully!")
+            self.view.show_success(f"Article #{article_id} updated successfully.")
             self.load_articles()
 
         def on_error(error: str):
@@ -236,38 +207,18 @@ class AdminPanelPresenter(BasePresenter):
         self._start_worker(
             self.admin_service.update_article,
             article_id=article_id,
-            title=form_data["title"],
-            summary=form_data["summary"],
-            content=form_data["content"],
-            url=form_data["url"],
-            source=form_data["source"],
-            category=form_data.get("category"),
-            image_url=form_data.get("image_url"),
             finished_slot=on_success,
-            error_slot=on_error
+            error_slot=on_error,
+            **data
         )
 
-    # ------------------------------
-    # Delete
-    # ------------------------------
     def on_delete_article(self, article_id: int):
-        """מחיקת מאמר"""
-        # אישור סופי מה-UI
-        reply = QMessageBox.question(
-            self.view,
-            "Confirm Delete",
-            f"Are you sure you want to delete article #{article_id}?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
+        """שליחת בקשת מחיקה ל-backend"""
         self.view.show_loading(f"Deleting article #{article_id}...")
 
-        def on_success(_response: Dict[str, Any]):
+        def on_success(response: Dict[str, Any]):
             self.view.hide_loading()
-            self.view.show_success(f"Article #{article_id} deleted successfully!")
+            self.view.show_success(f"Article #{article_id} deleted.")
             self.load_articles()
 
         def on_error(error: str):
@@ -282,46 +233,99 @@ class AdminPanelPresenter(BasePresenter):
         )
 
     # ------------------------------
-    # Classify (batch)
+    # AI/Classification
     # ------------------------------
-    def on_classify_all(self):
-        """סיווג כל המאמרים הלא מסווגים ('General' או ריקים)"""
-        self.view.show_loading("Fetching uncategorized articles...")
+    def on_classify_article(self, article_id: int):
+        """שליחת מאמר לסיווג AI (הצעה בלבד)"""
+        self.view.show_loading(f"Classifying article #{article_id}...")
 
-        def on_uncategorized_loaded(response: Dict[str, Any]):
-            # ה-backend של אדמין מחזיר {"count": X, "articles": [{id,title,category,...}]}
-            articles = response.get("articles", []) if isinstance(response, dict) else []
-            count = len(articles)
-
-            if count == 0:
-                self.view.hide_loading()
-                self.view.show_success("No uncategorized articles found!")
-                return
-
-            # אישור פעולה מרובת פריטים
-            reply = QMessageBox.question(
-                self.view,
-                "Confirm Batch Classification",
-                f"Found {count} uncategorized articles.\nClassify them all?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes
+        def on_success(response: Dict[str, Any]):
+            self.view.hide_loading()
+            # תומך גם במבנים שונים מהשרת
+            suggested = (
+                response.get("suggested_category")
+                or response.get("category")
+                or "N/A"
             )
-
-            if reply == QMessageBox.Yes:
-                article_ids = [a.get("id") for a in articles if a.get("id") is not None]
-                if not article_ids:
-                    self.view.hide_loading()
-                    self.view.show_error("No valid article IDs to classify.")
-                    return
-                self._batch_classify(article_ids)
-            else:
-                self.view.hide_loading()
+            confidence = (
+                response.get("confidence")
+                or response.get("score")
+                or 0.0
+            )
+            self.view.show_info(
+                f"Classification result for article #{article_id}: "
+                f"Suggested category is '{suggested}' (Confidence: {confidence:.2f})"
+            )
 
         def on_error(error: str):
             self.view.hide_loading()
-            self.view.show_error(f"Failed to fetch uncategorized: {error}")
+            self.view.show_error(f"Failed to classify article: {error}")
 
-        # משתמשים ב-Admin API (לא שירות החדשות) כדי להביא *רשימת לא מסווגים*
+        self._start_worker(
+            self.admin_service.classify_article,
+            article_id=article_id,
+            finished_slot=on_success,
+            error_slot=on_error
+        )
+
+    def on_apply_classification(self, article_id: int):
+        """החלת סיווג AI ושמירה ב-DB"""
+        self.view.show_loading(f"Applying AI classification to article #{article_id}...")
+
+        def on_success(response: Dict[str, Any]):
+            self.view.hide_loading()
+            new_category = (
+                response.get("new_category")
+                or response.get("category")
+                or "N/A"
+            )
+            self.view.show_success(f"Article #{article_id} category set to '{new_category}' by AI.")
+            self.load_articles()
+
+        def on_error(error: str):
+            self.view.hide_loading()
+            self.view.show_error(f"Failed to apply classification: {error}")
+
+        self._start_worker(
+            self.admin_service.apply_classification,
+            article_id=article_id,
+            finished_slot=on_success,
+            error_slot=on_error
+        )
+
+    def on_batch_classify(self):
+        """סיווג מרובה למאמרים ללא קטגוריה"""
+        self.view.show_loading("Loading uncategorized articles...")
+
+        def on_uncategorized_loaded(data: Dict[str, Any]):
+            articles = data.get("articles", []) if isinstance(data, dict) else (data or [])
+            article_ids = [a["id"] for a in articles if isinstance(a, dict) and "id" in a]
+
+            if article_ids:
+                self.view.update_status(f"Found {len(article_ids)} uncategorized articles.")
+
+                reply = QMessageBox.question(
+                    self.view,
+                    "Confirm Batch Classify",
+                    f"Found {len(article_ids)} articles without a category. "
+                    f"Do you want to send them for batch AI classification? This may take a moment.",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+
+                if reply == QMessageBox.Yes:
+                    self._batch_classify(article_ids)
+                else:
+                    self.view.hide_loading()
+                    return
+            else:
+                self.view.hide_loading()
+                self.view.show_info("No uncategorized articles found for batch classification.")
+
+        def on_error(error: str):
+            self.view.hide_loading()
+            self.view.show_error(f"Failed to fetch uncategorized articles: {error}")
+
         self._start_worker(
             self.admin_service.get_uncategorized_articles,
             limit=50,
@@ -345,7 +349,7 @@ class AdminPanelPresenter(BasePresenter):
             self.view.show_error(f"Batch classification failed: {error}")
 
         self._start_worker(
-            self.admin_service.batch_classify_articles,
+            self.admin_service.batch_classify,
             article_ids=article_ids,
             finished_slot=on_success,
             error_slot=on_error

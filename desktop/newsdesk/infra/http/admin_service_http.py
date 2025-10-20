@@ -1,116 +1,127 @@
-from typing import Dict, Any, List, Optional
-from newsdesk.infra.http.news_api_client import NewsApiClient
+from typing import Optional, Dict, Any, List
+class AdminServiceHttp:
+    """
+    עטיפה לשירותי Admin מול ה-API.
+    חשוב: ה-Presenter משתמש במתודות כאן לפי השמות שלמטה.
+    """
 
+    def __init__(self, api_client):
+        # api_client אמור לספק מתודות: get(path, params=None), post(path, json=None), put(path, json=None), delete(path)
+        self._api = api_client
 
-class HttpAdminService:
-    """שירות ניהול מאמרים למנהלים"""
-    
-    def __init__(self, api: NewsApiClient):
-        self._api = api
-    
-    def create_article(
-        self,
-        title: str,
-        summary: str,
-        content: str,
-        url: str,
-        source: str,
-        category: Optional[str] = None,
-        image_url: Optional[str] = None,
-        auto_classify: bool = True
-    ) -> Dict[str, Any]:
+    # ---------- Categories ----------
+    def get_available_categories(self):
         """
-        צור מאמר חדש
-        
-        Returns:
-            {
-                "success": True,
-                "article_id": 123,
-                "category": "Technology",
-                "classification": {...}
-            }
+        החזר רשימת קטגוריות זמינות לסיווג.
+        יכול להחזיר list[str] או {"categories": [...] } – ה-Presenter תומך בשניהם.
         """
+        try:
+            data = self._api.get("/admin/categories")
+        except Exception:
+            # fallback (אם אין endpoint אדמין) – אפשר להביא מקטגוריות ציבוריות
+            data = self._api.get("/categories")
+        return data
+
+    # ---------- Articles (list/details) ----------
+    def get_all_articles(self, limit: int = 50, category: Optional[str] = None):
+        """
+        משיכת רשימת מאמרים לניהול.
+        השרת אצלך כנראה מגביל limit<=100, לכן נעשה clamp.
+        """
+        try:
+            lim = int(limit) if limit is not None else 50
+        except Exception:
+            lim = 50
+        lim = max(1, min(lim, 100))
+
+        params: Dict[str, Any] = {"limit": lim}
+        if category:
+            params["category"] = category
+
+        # אם יש לך endpoint ייעודי לאדמין – החלף ל: "/admin/articles"
+        return self._api.get("/articles", params=params)
+
+    def get_article_details(self, article_id: int):
+        """
+        פרטי מאמר יחיד.
+        אם יש לך endpoint אדמין – החלף ל: f"/admin/articles/{article_id}"
+        """
+        return self._api.get(f"/articles/{article_id}")
+
+    # ---------- CRUD ----------
+    def create_article(self,
+                       title: str,
+                       url: str,
+                       source: str,
+                       summary: Optional[str] = None,
+                       content: Optional[str] = None,
+                       category: Optional[str] = None,
+                       image_url: Optional[str] = None):
         payload = {
             "title": title,
-            "summary": summary,
-            "content": content,
             "url": url,
             "source": source,
-            "auto_classify": auto_classify
+            "summary": summary,
+            "content": content,
+            "category": category,
+            "image_url": image_url
         }
-        
-        if category:
-            payload["category"] = category
-        if image_url:
-            payload["image_url"] = image_url
-            payload["thumb_url"] = image_url
-        
-        return self._api.post("/admin/articles", json=payload)
-    
-    def update_article(
-        self,
-        article_id: int,
-        title: Optional[str] = None,
-        summary: Optional[str] = None,
-        content: Optional[str] = None,
-        url: Optional[str] = None,
-        source: Optional[str] = None,
-        category: Optional[str] = None,
-        image_url: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """עדכן מאמר קיים"""
-        payload = {}
-        
-        if title is not None:
-            payload["title"] = title
-        if summary is not None:
-            payload["summary"] = summary
-        if content is not None:
-            payload["content"] = content
-        if url is not None:
-            payload["url"] = url
-        if source is not None:
-            payload["source"] = source
-        if category is not None:
-            payload["category"] = category
-        if image_url is not None:
-            payload["image_url"] = image_url
-            payload["thumb_url"] = image_url
-        
-        return self._api.put(f"/admin/articles/{article_id}", json=payload)
-    
-    def delete_article(self, article_id: int) -> Dict[str, Any]:
-        """מחק מאמר"""
-        return self._api.delete(f"/admin/articles/{article_id}")
-    
-    def classify_article(self, article_id: int) -> Dict[str, Any]:
+        # אדמין או ציבורי – תלוי במה שהגדרת בשרת
+        # אם יש אדמין: return self._api.post("/admin/articles", json=payload)
+        return self._api.post("/articles", json=payload)
+
+    def update_article(self, article_id: int, **fields):
         """
-        קבל הצעת סיווג למאמר
-        
-        Returns:
-            {
-                "article_id": 123,
-                "current_category": "General",
-                "suggested_category": "Technology",
-                "confidence": 0.95,
-                "all_suggestions": [...]
-            }
+        עדכון מאמר קיים. fields יכול לכלול title/url/source/summary/content/category/image_url
         """
-        return self._api.post(f"/admin/articles/{article_id}/classify")
-    
-    def apply_classification(self, article_id: int) -> Dict[str, Any]:
-        """החל סיווג אוטומטי על מאמר"""
-        return self._api.post(f"/admin/articles/{article_id}/apply-classification")
-    
-    def batch_classify(self, article_ids: List[int]) -> Dict[str, Any]:
-        """סווג מספר מאמרים בבת אחת"""
-        return self._api.post("/admin/articles/batch-classify", json={"article_ids": article_ids})
-    
-    def get_uncategorized_articles(self, limit: int = 50) -> Dict[str, Any]:
-        """קבל מאמרים ללא קטגוריה"""
-        return self._api.get("/admin/articles/uncategorized", params={"limit": limit})
-    
-    def get_available_categories(self) -> List[str]:
-        """קבל רשימת קטגוריות זמינות"""
-        result = self._api.get("/admin/categories")
-        return result.get("categories", [])
+        # אם יש אדמין: path = f"/admin/articles/{article_id}"
+        path = f"/articles/{article_id}"
+        return self._api.put(path, json=fields)
+
+    def delete_article(self, article_id: int):
+        # אם יש אדמין: path = f"/admin/articles/{article_id}"
+        path = f"/articles/{article_id}"
+        return self._api.delete(path)
+
+    # ---------- Classification ----------
+    def classify_article(self, article_id: int):
+        """
+        סיווג AI הצעתי (ללא שינוי ב-DB).
+        """
+        # אם יש אדמין: "/admin/articles/{id}/classify"
+        return self._api.post(f"/articles/{article_id}/classify")
+
+    def apply_classification(self, article_id: int):
+        """
+        החלת סיווג AI ושמירה בפועל.
+        """
+        # אם יש אדמין: "/admin/articles/{id}/apply-classification"
+        return self._api.post(f"/articles/{article_id}/apply-classification")
+
+    def get_uncategorized_articles(self, limit: int = 50):
+        """
+        החזר מאמרים בלי קטגוריה (לסיווג מרובה).
+        אם אין endpoint ייעודי – אפשר להביא את כולם ולסנן בצד לקוח (פחות מומלץ).
+        """
+        try:
+            lim = int(limit) if limit is not None else 50
+        except Exception:
+            lim = 50
+        lim = max(1, min(lim, 100))
+
+        # עדיף endpoint ייעודי:
+        # return self._api.get("/admin/articles/uncategorized", params={"limit": lim})
+        # fallback: הבאה רגילה + סינון (אם השרת לא מספק ייעודי)
+        data = self._api.get("/articles", params={"limit": lim})
+        if isinstance(data, dict):
+            articles = data.get("articles", []) or data.get("data", [])
+        else:
+            articles = data or []
+
+        uncategorized = [a for a in articles if isinstance(a, dict) and not a.get("category")]
+        # ה-Presenter תומך גם ברשימה ישירה, אבל נחזיר dict סטנדרטי:
+        return {"articles": uncategorized}
+
+    def batch_classify(self, article_ids: List[int]):
+        payload = {"article_ids": article_ids}
+        return self._api.post("/articles/batch-classify", json=payload)
