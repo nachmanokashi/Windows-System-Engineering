@@ -1,9 +1,4 @@
-# server/app/mvc/controllers/admin_controller.py
-"""
-Admin Controller - ניהול מאמרים (רק למנהלים!)
-"""
-
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body,Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -379,3 +374,77 @@ def get_available_categories(admin_user: User = Depends(require_admin)):
     return {
         "categories": classifier.get_available_categories()
     }
+
+@router.get("/articles")
+def get_all_articles_admin(
+    admin_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+    limit: int = Query(100, ge=1, le=1000),
+    category: Optional[str] = None
+):
+    """קבל את כל המאמרים - אדמין בלבד"""
+    try:
+        query = db.query(Article)
+        
+        if category:
+            query = query.filter(Article.category == category)
+        
+        query = query.order_by(Article.published_at.desc())
+        articles = query.limit(limit).all()
+        
+        items = [
+            {
+                "id": a.id,
+                "title": a.title,
+                "summary": a.summary,
+                "content": a.content,
+                "source": a.source,
+                "category": a.category,
+                "url": a.url,
+                "image_url": a.image_url,
+                "thumb_url": a.thumb_url,
+                "published_at": a.published_at.isoformat() if a.published_at else None
+            }
+            for a in articles
+        ]
+        
+        return {
+            "articles": items,
+            "total": len(items)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch articles: {str(e)}")
+    
+@router.get("/articles/{article_id}")
+def get_article_by_id(
+        article_id: int,
+        admin_user: User = Depends(require_admin),
+        db: Session = Depends(get_db)
+    ):
+        """קבל פרטי מאמר בודד - אדמין בלבד"""
+        try:
+            article = db.query(Article).filter(Article.id == article_id).first()
+            
+            if not article:
+                raise HTTPException(status_code=404, detail="Article not found")
+            
+            return {
+                "article": {
+                    "id": article.id,
+                    "title": article.title,
+                    "summary": article.summary,
+                    "content": article.content,
+                    "source": article.source,
+                    "category": article.category,
+                    "url": article.url,
+                    "image_url": article.image_url,
+                    "thumb_url": article.thumb_url,
+                    "published_at": article.published_at.isoformat() if article.published_at else None
+                }
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch article: {str(e)}")
