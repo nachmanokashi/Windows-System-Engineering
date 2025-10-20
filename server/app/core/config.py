@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # External APIs (לשלב הבא)
     NEWS_API_KEY: str = Field(default="", description="News API Key")
 
+    GUARDIAN_API_KEY: str = Field(default="", description="Guardian API Key")
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()

@@ -11,12 +11,14 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QIcon
 
 from newsdesk.mvp.view.microfrontend_manager import MicrofrontendManager
+# נתיבים מעודכנים לרכיבים
 from newsdesk.components.articles_list.articles_list_view import ArticlesListComponent
 from newsdesk.components.articles_list.articles_list_presenter import ArticlesListPresenter
 from newsdesk.components.article_details.article_details_view import ArticleDetailsComponent
 from newsdesk.components.article_details.article_details_presenter import ArticleDetailsPresenter
 from newsdesk.components.weather.weather_component import WeatherComponent
 from newsdesk.components.weather.weather_presenter import WeatherPresenter
+
 
 from newsdesk.infra.http.news_api_client import NewsApiClient
 from newsdesk.infra.http.news_service_http import HttpNewsService
@@ -79,70 +81,54 @@ class MainWindowMicrofrontends(QMainWindow):
         layout = QVBoxLayout(sidebar)
         layout.setContentsMargins(10, 20, 10, 20)
         layout.setSpacing(10)
-        
+
         logo_label = QLabel("📰 NewsDesk")
         logo_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         logo_label.setStyleSheet("color: white; padding: 10px;")
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(logo_label)
-        
+
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
         separator.setStyleSheet("background-color: #34495e;")
         layout.addWidget(separator)
-        
+
         nav_style = """
             QPushButton {
-                background-color: transparent;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 12px;
-                text-align: left;
-                font-size: 14px;
-                font-weight: bold;
+                background-color: transparent; color: white; border: none;
+                border-radius: 5px; padding: 12px; text-align: left;
+                font-size: 14px; font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #34495e;
-            }
-            QPushButton:pressed {
-                background-color: #1abc9c;
-            }
-            QPushButton:checked {
-                background-color: #16a085;
-            }
+            QPushButton:hover { background-color: #34495e; }
+            QPushButton:pressed { background-color: #1abc9c; }
+            QPushButton:checked { background-color: #16a085; }
         """
-        
+
         # Articles button
         self.nav_articles_btn = QPushButton("📄 Articles")
         self.nav_articles_btn.setStyleSheet(nav_style)
         self.nav_articles_btn.setCheckable(True)
         self.nav_articles_btn.clicked.connect(lambda: self.navigate_to("articles_list"))
         layout.addWidget(self.nav_articles_btn)
-        
+
         # Weather button
         self.nav_weather_btn = QPushButton("🌤️ Weather")
         self.nav_weather_btn.setStyleSheet(nav_style)
         self.nav_weather_btn.setCheckable(True)
         self.nav_weather_btn.clicked.connect(lambda: self.navigate_to("weather"))
         layout.addWidget(self.nav_weather_btn)
-        
-        # Charts button
-        self.nav_charts_btn = QPushButton("📊 Charts")
-        self.nav_charts_btn.setStyleSheet(nav_style)
-        self.nav_charts_btn.setCheckable(True)
-        self.nav_charts_btn.clicked.connect(lambda: self.show_coming_soon("Charts"))
-        layout.addWidget(self.nav_charts_btn)
-        
+
+        # --- הסרנו את כפתור Charts ---
+
         # AI Chat button
         self.nav_chat_btn = QPushButton("💬 AI Chat")
         self.nav_chat_btn.setStyleSheet(nav_style)
         self.nav_chat_btn.setCheckable(True)
         self.nav_chat_btn.clicked.connect(lambda: self.show_coming_soon("AI Chat"))
         layout.addWidget(self.nav_chat_btn)
-        
+
         layout.addStretch()
-        
+
         # User info
         user_frame = QFrame()
         user_frame.setStyleSheet("QFrame { background-color: #34495e; border-radius: 5px; padding: 10px; }")
@@ -156,32 +142,22 @@ class MainWindowMicrofrontends(QMainWindow):
             admin_badge.setStyleSheet("color: #f39c12; font-size: 11px;")
             user_layout.addWidget(admin_badge)
         layout.addWidget(user_frame)
-        
+
         # Logout button
         logout_btn = QPushButton("🚪 Logout")
         logout_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            }
+            QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 5px; padding: 10px; font-weight: bold; }
+            QPushButton:hover { background-color: #c0392b; }
         """)
         logout_btn.clicked.connect(self.on_logout_clicked)
         layout.addWidget(logout_btn)
-        
+
         return sidebar
 
     def _create_content_area(self) -> QWidget:
         content = QWidget()
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0)
         self.stacked_widget = QStackedWidget()
         layout.addWidget(self.stacked_widget)
         return content
@@ -197,29 +173,32 @@ class MainWindowMicrofrontends(QMainWindow):
         print(f"Main window: Component changed to index {index}")
         current_component = self.stacked_widget.widget(index)
 
+        # --- הוספנו WeatherComponent לרשימת הרכיבים המוכרים ---
         if not isinstance(current_component, (ArticlesListComponent, ArticleDetailsComponent, WeatherComponent)):
-            print(f"Main window: Widget at index {index} is not a recognized component.")
-            self._update_active_nav_button(current_component)
-            return
+             print(f"Main window: Widget at index {index} is not a recognized component.")
+             self._update_active_nav_button(current_component)
+             return
 
         print(f"Main window: Current component is {type(current_component).__name__}")
         self._update_active_nav_button(current_component)
 
         needs_initial_load = False
-        
         # Articles List Component
         if isinstance(current_component, ArticlesListComponent):
             if not current_component.presenter:
                 print("Main window: Connecting ArticlesListPresenter...")
-                presenter = ArticlesListPresenter(current_component, self.news_service)
+                presenter = ArticlesListPresenter(current_component, self.news_service, self.likes_service) # הוספנו likes_service
                 current_component.presenter = presenter
                 current_component.article_clicked.connect(self.on_article_clicked)
+                # חיבור סיגנלים חדשים ללייקים מהרשימה
+                current_component.like_toggled.connect(presenter.toggle_like)
+                current_component.dislike_toggled.connect(presenter.toggle_dislike)
                 needs_initial_load = True
             if needs_initial_load:
                 print("Main window: Triggering initial data load for ArticlesListComponent.")
                 current_component.load_initial_data()
             else:
-                print("Main window: ArticlesListComponent already has a presenter.")
+                 print("Main window: ArticlesListComponent already has a presenter.")
 
         # Article Details Component
         elif isinstance(current_component, ArticleDetailsComponent):
@@ -229,21 +208,22 @@ class MainWindowMicrofrontends(QMainWindow):
                 presenter.likes_service = self.likes_service
                 current_component.presenter = presenter
                 current_component.back_requested.connect(self.on_back_to_list_requested)
-        
+                # חיבור סיגנלים ללייקים מהפרטים (אם רוצים לטפל גם כאן)
+                # current_component.like_toggled.connect(...)
+                # current_component.dislike_toggled.connect(...)
+
         # Weather Component
         elif isinstance(current_component, WeatherComponent):
             if not current_component._presenter:
                 print("Main window: Connecting WeatherPresenter...")
-                presenter = WeatherPresenter(self.api_client)
+                presenter = WeatherPresenter(self.api_client) # WeatherPresenter משתמש ישירות ב-api_client
                 presenter.set_view(current_component)
                 current_component.set_presenter(presenter)
                 current_component.back_requested.connect(self.on_back_to_list_requested)
-                # טען נתונים
-                current_component.on_mount()
+                current_component.on_mount() # טען נתונים
 
     def _update_active_nav_button(self, current_component: QWidget = None):
-        if current_component is None:
-            current_component = self.manager.get_current_component()
+        if current_component is None: current_component = self.manager.get_current_component()
 
         is_articles = isinstance(current_component, ArticlesListComponent)
         is_details = isinstance(current_component, ArticleDetailsComponent)
@@ -253,7 +233,7 @@ class MainWindowMicrofrontends(QMainWindow):
 
         self.nav_articles_btn.setChecked(is_articles or is_details)
         self.nav_weather_btn.setChecked(is_weather)
-        self.nav_charts_btn.setChecked(False)
+        # --- הסרנו את charts_btn ---
         self.nav_chat_btn.setChecked(False)
 
     def navigate_to(self, component_name: str, **kwargs) -> None:
@@ -269,24 +249,20 @@ class MainWindowMicrofrontends(QMainWindow):
         self.navigate_to("articles_list")
 
     def show_coming_soon(self, feature: str) -> None:
-        QMessageBox.information(
-            self, "Coming Soon", f"{feature} component is coming soon! 🚀"
-        )
+        QMessageBox.information(self, "Coming Soon", f"{feature} component is coming soon! 🚀")
         sender = self.sender()
-        if sender and isinstance(sender, QPushButton) and sender.isCheckable():
-            sender.setChecked(False)
+        if sender and isinstance(sender, QPushButton) and sender.isCheckable(): sender.setChecked(False)
         self._update_active_nav_button()
 
     def on_logout_clicked(self) -> None:
-        reply = QMessageBox.question(
-            self, "Logout", "Are you sure you want to logout?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
+        reply = QMessageBox.question(self, "Logout", "Are you sure you want to logout?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             for component_name, component_instance in self.manager._component_instances.items():
-                if hasattr(component_instance, 'presenter') and component_instance.presenter:
-                    if hasattr(component_instance.presenter, 'cleanup'):
-                        print(f"Main window: Cleaning up presenter for {component_name}")
-                        component_instance.presenter.cleanup()
-            self.logout_clicked.emit()
-            self.close()
+                 if hasattr(component_instance, 'presenter') and component_instance.presenter and hasattr(component_instance.presenter, 'cleanup'):
+                     print(f"Main window: Cleaning up presenter for {component_name}")
+                     component_instance.presenter.cleanup()
+                 elif hasattr(component_instance, '_presenter') and component_instance._presenter and hasattr(component_instance._presenter, 'cleanup'): # For weather
+                      print(f"Main window: Cleaning up presenter for {component_name} (weather style)")
+                      component_instance._presenter.cleanup()
+
+            self.logout_clicked.emit(); self.close()

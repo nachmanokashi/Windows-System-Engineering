@@ -11,7 +11,7 @@ from app.mvc.models.users.user_entity import User
 from app.mvc.models.articles.article_service import ArticleService
 from app.mvc.models.articles.article_schemas import ArticleCreate, ArticleRead
 from app.mvc.models.articles.article_entity import Article
-from app.mvc.models.likes.likes_service import LikeService
+# [תיקון] הסרנו ייבוא מיותר של LikeService
 
 # Event Sourcing
 from app.event_sourcing.event_store import get_event_store
@@ -24,9 +24,8 @@ from app.event_sourcing.events import (
 
 router = APIRouter(tags=["articles"])
 
-
 # ============================================
-# Public Routes (לא דורשות אימות)
+# Public Routes
 # ============================================
 
 @router.get("/articles/categories")
@@ -56,7 +55,6 @@ def list_articles(
         actual_page_size = limit if limit and limit != 20 else page_size
         rows, total = service.list(category, page, actual_page_size)
         
-        # Convert SQLAlchemy objects to dicts
         items = [
             {
                 "id": row.id,
@@ -93,7 +91,6 @@ def search_articles(
         service = ArticleService(db)
         rows = service.search(q, category)
         
-        # Convert to dicts
         items = [
             {
                 "id": row.id,
@@ -114,44 +111,42 @@ def search_articles(
         raise HTTPException(status_code=500, detail=f"Failed to search articles: {str(e)}")
 
 
-@router.get("/articles/{article_id}", response_model=ArticleRead)
+# בקובץ articles_controller.py
+# תחליף את הפונקציה get_article:
+
+@router.get("/articles/{article_id}")
 def get_article(
     article_id: int, 
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)  # Optional - גם אם לא מחובר
+    db: Session = Depends(get_db)
 ):
     """
-    פרטי מאמר - פומבי
-    + שמירת Event של צפייה אם המשתמש מחובר
+    פרטי מאמר - פומבי עם content מלא (ללא צורך באימות)
     """
     try:
         service = ArticleService(db)
-        event_store = get_event_store(db)
         
         row = service.get(article_id)
         if not row:
             raise HTTPException(status_code=404, detail="Article not found")
         
-        # שמור Event של צפייה (רק אם המשתמש מחובר)
-        try:
-            if current_user:
-                event = ArticleViewedEvent(
-                    article_id=article_id,
-                    user_id=current_user.id
-                )
-                event_id = event_store.save_event(event)
-                print(f"✅ Article {article_id} viewed by user {current_user.id}, Event ID: {event_id}")
-        except Exception as e:
-            # אם יש שגיאה בשמירת Event, לא נכשיל את כל הבקשה
-            print(f"⚠️ Failed to save view event: {e}")
-        
-        return row
+        # החזר dictionary עם כל השדות כולל content
+        return {
+            "id": row.id,
+            "title": row.title,
+            "summary": row.summary,
+            "content": row.content,  # ✅ זה החשוב!
+            "url": row.url,
+            "source": row.source,
+            "category": row.category,
+            "image_url": row.image_url if row.image_url else "",
+            "thumb_url": row.thumb_url if row.thumb_url else "",
+            "published_at": row.published_at.isoformat() if row.published_at else None,
+        }
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error getting article: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get article: {str(e)}")
-
 
 # ============================================
 # Protected Routes (דורשות אימות)
@@ -171,10 +166,8 @@ def create_article(
         service = ArticleService(db)
         event_store = get_event_store(db)
         
-        # צור מאמר
         row = service.create(payload.model_dump())
         
-        # שמור Event
         event = ArticleCreatedEvent(
             article_id=row.id,
             title=row.title,
@@ -186,7 +179,6 @@ def create_article(
             source=row.source,
             user_id=current_user.id
         )
-        
         event_id = event_store.save_event(event)
         
         print(f"✅ Article {row.id} created by user {current_user.id}, Event ID: {event_id}")
@@ -197,8 +189,6 @@ def create_article(
         if "2627" in msg or "2601" in msg:
             raise HTTPException(status_code=409, detail="Article with this URL already exists")
         raise
-    except HTTPException:
-        raise
     except Exception as e:
         print(f"Error creating article: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create article: {str(e)}")
@@ -207,7 +197,7 @@ def create_article(
 @router.put("/articles/{article_id}")
 def update_article(
     article_id: int,
-    payload: ArticleCreate,  # או צור ArticleUpdate schema נפרד
+    payload: ArticleCreate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -219,16 +209,12 @@ def update_article(
         service = ArticleService(db)
         event_store = get_event_store(db)
         
-        # בדוק שהמאמר קיים
         existing = service.get(article_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Article not found")
         
-        # עדכן מאמר
         updated_data = payload.model_dump(exclude_unset=True)
         
-        # עדכן בפועל (תלוי באיך ArticleService שלך עובד)
-        # אם אין update method, תצטרך להוסיף
         for key, value in updated_data.items():
             if hasattr(existing, key):
                 setattr(existing, key, value)
@@ -236,13 +222,11 @@ def update_article(
         db.commit()
         db.refresh(existing)
         
-        # שמור Event
         event = ArticleUpdatedEvent(
             article_id=article_id,
             updated_fields=updated_data,
             user_id=current_user.id
         )
-        
         event_id = event_store.save_event(event)
         
         print(f"✅ Article {article_id} updated by user {current_user.id}, Event ID: {event_id}")
@@ -252,8 +236,6 @@ def update_article(
             "article_id": article_id,
             "event_id": event_id
         }
-    except HTTPException:
-        raise
     except Exception as e:
         print(f"Error updating article: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update article: {str(e)}")
@@ -273,21 +255,17 @@ def delete_article(
         service = ArticleService(db)
         event_store = get_event_store(db)
         
-        # בדוק שהמאמר קיים
         existing = service.get(article_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Article not found")
         
-        # מחק מאמר
         db.delete(existing)
         db.commit()
         
-        # שמור Event
         event = ArticleDeletedEvent(
             article_id=article_id,
             user_id=current_user.id
         )
-        
         event_id = event_store.save_event(event)
         
         print(f"✅ Article {article_id} deleted by user {current_user.id}, Event ID: {event_id}")
@@ -297,40 +275,6 @@ def delete_article(
             "article_id": article_id,
             "event_id": event_id
         }
-    except HTTPException:
-        raise
     except Exception as e:
         print(f"Error deleting article: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete article: {str(e)}")
-
-
-# ============================================
-# Stats Routes (לייקים)
-# ============================================
-
-@router.post("/articles/batch-stats")
-def batch_stats(
-    ids: List[int] = Body(..., embed=True), 
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """סטטיסטיקות לייקים למספר מאמרים"""
-    if not ids:
-        return {}
-    
-    service = LikeService(db)
-    results = {}
-    for article_id in ids:
-        results[str(article_id)] = service.get_article_stats(article_id, current_user.id)
-    return results
-
-
-@router.get("/articles/{article_id}/stats")
-def article_stats(
-    article_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """סטטיסטיקות לייקים למאמר יחיד"""
-    stats = LikeService(db).get_article_stats(article_id, current_user.id)
-    return stats
