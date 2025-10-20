@@ -3,7 +3,13 @@ from app.core.config import get_settings
 from app.core.middleware import add_middlewares
 from app.core.db import Base, engine
 from app.mvc.controllers import health_controller
-from app.mvc.controllers import articles_controller, auth_controller, llm_controller, likes_controller
+from app.mvc.controllers import (
+    articles_controller, 
+    auth_controller, 
+    llm_controller, 
+    likes_controller,
+    admin_controller  
+)
 from fastapi.staticfiles import StaticFiles
 from app.gateways.weather_api_gateway import WeatherAPIGateway
 
@@ -17,7 +23,6 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# הוספת middlewares (CORS, Exception handlers)
 add_middlewares(app, settings)
 
 # יצירת טבלאות בבסיס הנתונים
@@ -32,6 +37,7 @@ app.include_router(auth_controller.router, prefix=settings.API_PREFIX)
 app.include_router(articles_controller.router, prefix=settings.API_PREFIX)
 app.include_router(llm_controller.router, prefix=settings.API_PREFIX)
 app.include_router(likes_controller.router, prefix=settings.API_PREFIX)
+app.include_router(admin_controller.router, prefix=settings.API_PREFIX)  
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/")
@@ -39,7 +45,8 @@ def root():
     return {
         "message": "Welcome to NewsDesk API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
+        "admin": "/docs#/admin"  
     }
 
 @app.get("/api/v1/weather/current")
@@ -64,4 +71,4 @@ def get_daily_forecast(city: str = None):
     
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)
