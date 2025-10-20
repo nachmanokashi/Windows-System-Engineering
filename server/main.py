@@ -8,7 +8,8 @@ from app.mvc.controllers import (
     auth_controller, 
     llm_controller, 
     likes_controller,
-    admin_controller  
+    admin_controller,
+    gemini_controller
 )
 from fastapi.staticfiles import StaticFiles
 from app.gateways.weather_api_gateway import WeatherAPIGateway
@@ -37,7 +38,8 @@ app.include_router(auth_controller.router, prefix=settings.API_PREFIX)
 app.include_router(articles_controller.router, prefix=settings.API_PREFIX)
 app.include_router(llm_controller.router, prefix=settings.API_PREFIX)
 app.include_router(likes_controller.router, prefix=settings.API_PREFIX)
-app.include_router(admin_controller.router, prefix=settings.API_PREFIX)  
+app.include_router(admin_controller.router, prefix=settings.API_PREFIX) 
+app.include_router(gemini_controller.router, prefix=settings.API_PREFIX)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/")

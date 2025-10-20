@@ -1,8 +1,3 @@
-# client/newsdesk/components/articles_list/articles_list_view.py
-"""
-ArticlesListComponent - View
-Displays a list of articles using Cards
-"""
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QScrollArea, QWidget, QFrame, QSizePolicy, QSpacerItem,
@@ -12,13 +7,9 @@ from PySide6.QtCore import Signal, Qt, QSize
 from PySide6.QtGui import QFont, QColor, QPixmap
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-
-# ודא שהנתיב לייבוא נכון
 from newsdesk.components.base_component import BaseComponent
 
-# ============================================
-# Article Card Widget (אותו קוד כמו קודם)
-# ============================================
+
 class ArticleCard(QFrame):
     clicked = Signal(int); like_toggled = Signal(int); dislike_toggled = Signal(int)
     def __init__(self, article_data: Dict[str, Any], stats: Dict[str, Any] = None, parent=None):
@@ -36,22 +27,17 @@ class ArticleCard(QFrame):
         source_label = QLabel(f"📰 {article_data.get('source', 'Unknown')}"); source_label.setStyleSheet("color: #95a5a6; font-size: 11px; font-weight: bold;"); meta_layout.addWidget(source_label)
         meta_layout.addStretch(1)
         content_layout.addLayout(meta_layout)
+        layout.addLayout(content_layout)
+
     def _set_icon(self, category: str): icon_map = {"sports": "⚽", "economy": "💰", "politics": "🏛️", "technology": "💻", "health": "⚕️", "science": "🔬", "environment": "🌳", "business": "💼"}; emoji = icon_map.get(category.lower(), "📰"); self.image_label.setText(emoji); icon_font = QFont(); icon_font.setPointSize(40); self.image_label.setFont(icon_font)
-    def _on_like_clicked(self):
-        try: self.like_toggled.emit(int(self.article_id)) if self.article_id is not None else None
-        except (ValueError, TypeError): print(f"Card Error: Invalid article_id '{self.article_id}' for like")
-    def _on_dislike_clicked(self):
-        try: self.dislike_toggled.emit(int(self.article_id)) if self.article_id is not None else None
-        except (ValueError, TypeError): print(f"Card Error: Invalid article_id '{self.article_id}' for dislike")
-    def update_stats(self, stats: Dict[str, Any]):
-        self.stats = stats; likes = stats.get("likes_count", 0); dislikes = stats.get("dislikes_count", 0); liked = stats.get("user_liked", False); disliked = stats.get("user_disliked", False)
-        like_icon = "❤️" if liked else "🤍"; self.like_button.setText(f"{like_icon} ({likes})"); self.like_button.setStyleSheet(self._get_button_style("like", liked)); self.like_button.blockSignals(True); self.like_button.setChecked(liked); self.like_button.blockSignals(False)
-        dislike_icon = "👎" if disliked else "👎🏻"; self.dislike_button.setText(f"{dislike_icon} ({dislikes})"); self.dislike_button.setStyleSheet(self._get_button_style("dislike", disliked)); self.dislike_button.blockSignals(True); self.dislike_button.setChecked(disliked); self.dislike_button.blockSignals(False)
+
     def mouseDoubleClickEvent(self, event):
         try: self.clicked.emit(int(self.article_id)) if self.article_id is not None else None
         except (ValueError, TypeError): print(f"Card Error: Invalid article_id '{self.article_id}' for click")
         super().mouseDoubleClickEvent(event)
+
     def _get_card_style(self) -> str: return """ ArticleCard { background-color: white; border: 1px solid #dfe6e9; border-radius: 8px; margin-bottom: 10px; } ArticleCard:hover { border: 1px solid #74b9ff; background-color: #f8f9fa; } """
+    
     def _get_button_style(self, button_type: str, active: bool = False) -> str:
         fs = "11px"; pad = "4px 8px"; mw = "70px"; press_like = "#a52a1a" if active else "#95a5a6"; press_dislike = "#21618c" if active else "#95a5a6"
         if button_type == "like": bg = "#e74c3c" if active else "#dfe6e9"; clr = "white" if active else "#7f8c8d"; hov = "#c0392b" if active else "#bdc3c7"; border="none"; press=press_like
@@ -67,7 +53,6 @@ class ArticlesListComponent(BaseComponent):
     def __init__(self, parent=None): super().__init__(parent); self.presenter = None; self.card_widgets: Dict[int, ArticleCard] = {}
 
     def setup_ui(self) -> None:
-        # --- הוספנו צבע רקע לרכיב הראשי ---
         self.setStyleSheet("background-color: #f0f2f5;") # צבע רקע אפור בהיר
 
         # Header

@@ -1,6 +1,7 @@
 # desktop/newsdesk/mvp/view/components/weather/weather_presenter.py
 """
 Weather Presenter - לוגיקה לתחזית מזג אוויר
+✅ תוקן: ללא /api/v1/ כי api_client כבר מוסיף אותו!
 """
 
 from PySide6.QtCore import QObject, Signal
@@ -40,15 +41,17 @@ class WeatherPresenter(QObject):
             if city:
                 params["city"] = city
             
-            # api_client.get מחזיר Response object
+            # ✅ ללא /api/v1/ - api_client מוסיף אותו אוטומטית!
             response = self.api_client.get("/weather/current", params=params)
+            
+            print(f"🔍 Response type: {type(response)}")
             
             # בדוק אם זה Response או dict
             if hasattr(response, 'status_code'):
                 # זה Response object
                 if response.status_code == 200:
                     data = response.json()
-                    print(f"✅ מזג אוויר: {data['temperature']}°C")
+                    print(f"✅ מזג אוויר התקבל: {data['temperature']}°C, עיר: {data['city']}")
                     self.weather_loaded.emit(data)
                 else:
                     error = f"שגיאה {response.status_code}"
@@ -57,7 +60,7 @@ class WeatherPresenter(QObject):
             else:
                 # זה כבר dict
                 if 'error' in response:
-                    print(f"❌ {response['error']}")
+                    print(f"❌ שגיאה: {response['error']}")
                     self.error_occurred.emit(response['error'])
                 else:
                     print(f"✅ מזג אוויר: {response['temperature']}°C")
@@ -65,17 +68,23 @@ class WeatherPresenter(QObject):
                 
         except Exception as e:
             error = f"שגיאה: {str(e)}"
-            print(f"❌ {error}")
+            print(f"❌ שגיאה בטעינת מזג אוויר: {error}")
             self.error_occurred.emit(error)
     
     def _load_daily(self, city=None):
-        """טען תחזית יומית"""
+        """
+        טען תחזית יומית
+        ✅ תוקן: ללא /api/v1/ - api_client מוסיף אותו אוטומטית!
+        """
         try:
             params = {}
             if city:
                 params["city"] = city
             
+            # ✅ ללא /api/v1/ - api_client מוסיף אותו אוטומטית!
             response = self.api_client.get("/weather/daily", params=params)
+            
+            print(f"🔍 Daily Response type: {type(response)}")
             
             # בדוק אם זה Response או dict
             if hasattr(response, 'status_code'):
@@ -83,7 +92,15 @@ class WeatherPresenter(QObject):
                 if response.status_code == 200:
                     data = response.json()
                     daily = data["daily_forecast"]
-                    print(f"✅ תחזית: {len(daily)} ימים")
+                    
+                    # ✅ הדפס נתונים אמיתיים שהתקבלו
+                    print(f"✅ תחזית התקבלה: {len(daily)} ימים")
+                    for day in daily:
+                        print(f"   📊 {day['day_name']}: "
+                              f"Temp={day['temp_avg']}°C, "
+                              f"Humidity={day.get('humidity_avg', 'N/A')}%, "
+                              f"Wind={day.get('wind_speed_avg', 'N/A')}km/h")
+                    
                     self.daily_loaded.emit(daily)
                 else:
                     print(f"❌ שגיאה בתחזית: {response.status_code}")
@@ -93,8 +110,18 @@ class WeatherPresenter(QObject):
                     print(f"❌ {response['error']}")
                 elif 'daily_forecast' in response:
                     daily = response["daily_forecast"]
+                    
+                    # ✅ הדפס נתונים אמיתיים שהתקבלו
                     print(f"✅ תחזית: {len(daily)} ימים")
+                    for day in daily:
+                        print(f"   📊 {day['day_name']}: "
+                              f"Temp={day['temp_avg']}°C, "
+                              f"Humidity={day.get('humidity_avg', 'N/A')}%, "
+                              f"Wind={day.get('wind_speed_avg', 'N/A')}km/h")
+                    
                     self.daily_loaded.emit(daily)
                 
         except Exception as e:
             print(f"❌ שגיאה בתחזית: {e}")
+            import traceback
+            traceback.print_exc()

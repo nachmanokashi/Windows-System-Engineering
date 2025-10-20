@@ -7,6 +7,7 @@ from newsdesk.infra.auth.auth_manager import get_auth_manager
 from newsdesk.mvp.view.login_window import LoginWindow
 from newsdesk.mvp.presenter.login_presenter import LoginPresenter
 from newsdesk.mvp.view.main_window_microfrontends import MainWindowMicrofrontends
+from newsdesk.components.chat import ChatComponent, ChatPresenter
 
 
 def main() -> None:
@@ -81,6 +82,25 @@ def main() -> None:
     
     sys.exit(app.exec())
 
+def __init__(self):
+    # ...
+    
+    # צור את קומפוננטת הצ'אט
+    self.chat_component = ChatComponent()
+    self.chat_presenter = ChatPresenter(self.api_client)
+    self.chat_presenter.set_view(self.chat_component)
+    self.chat_component.set_presenter(self.chat_presenter)
+    
+    # רשום בניהול הקומפוננטות
+    self.component_manager.register_component(
+        name="chat",
+        component=self.chat_component
+    )
+    
+    # חבר כפתור חזרה
+    self.chat_component.back_requested.connect(
+        lambda: self.navigate_to("articles_list")
+    )
 
 if __name__ == "__main__":
     main()

@@ -131,63 +131,62 @@ class WeatherComponent(QWidget):
         left_layout.setSpacing(10)
         
         self.weather_icon = QLabel("🌤️")
-        self.weather_icon.setStyleSheet("font-size: 90px;")
-        self.weather_icon.setAlignment(Qt.AlignCenter)
+        self.weather_icon.setStyleSheet("font-size: 80px;")
         left_layout.addWidget(self.weather_icon)
         
         self.temp_label = QLabel("--°C")
-        self.temp_label.setStyleSheet("font-size: 64px; font-weight: bold; color: white;")
-        self.temp_label.setAlignment(Qt.AlignCenter)
+        self.temp_label.setStyleSheet("font-size: 48px; font-weight: bold; color: white;")
         left_layout.addWidget(self.temp_label)
         
-        self.description_label = QLabel("טוען...")
-        self.description_label.setStyleSheet("font-size: 20px; color: white; font-weight: 500;")
-        self.description_label.setAlignment(Qt.AlignCenter)
-        left_layout.addWidget(self.description_label)
-        
-        card_layout.addLayout(left_layout, 1)
+        card_layout.addLayout(left_layout)
         
         # Right - Details
         right_layout = QVBoxLayout()
-        right_layout.setSpacing(18)
-        right_layout.setAlignment(Qt.AlignVCenter)
+        right_layout.setSpacing(12)
         
-        self.city_label = QLabel("📍 תל אביב")
-        self.city_label.setStyleSheet("font-size: 26px; font-weight: bold; color: white;")
+        self.city_label = QLabel("📍 ...")
+        self.city_label.setStyleSheet("font-size: 20px; color: white; font-weight: bold;")
         right_layout.addWidget(self.city_label)
         
+        self.description_label = QLabel("...")
+        self.description_label.setStyleSheet("font-size: 18px; color: rgba(255,255,255,0.9);")
+        right_layout.addWidget(self.description_label)
+        
+        right_layout.addSpacing(15)
+        
         self.feels_label = QLabel("🌡️ מרגיש כמו: --°C")
-        self.feels_label.setStyleSheet("font-size: 18px; color: white;")
+        self.feels_label.setStyleSheet("font-size: 16px; color: rgba(255,255,255,0.95);")
         right_layout.addWidget(self.feels_label)
         
         self.humidity_label = QLabel("💧 לחות: --%")
-        self.humidity_label.setStyleSheet("font-size: 18px; color: white;")
+        self.humidity_label.setStyleSheet("font-size: 16px; color: rgba(255,255,255,0.95);")
         right_layout.addWidget(self.humidity_label)
         
         self.wind_label = QLabel("💨 רוח: -- km/h")
-        self.wind_label.setStyleSheet("font-size: 18px; color: white;")
+        self.wind_label.setStyleSheet("font-size: 16px; color: rgba(255,255,255,0.95);")
         right_layout.addWidget(self.wind_label)
         
-        card_layout.addLayout(right_layout, 1)
+        right_layout.addStretch()
+        
+        card_layout.addLayout(right_layout)
         
         return card
     
     def _create_temperature_chart(self):
-        """גרף קו - טמפרטורה"""
+        """גרף טמפרטורה"""
         # Series
         series = QLineSeries()
-        series.setName("טמפרטורה (°C)")
+        series.setName("טמפרטורה")
         
-        # Styling
         pen = series.pen()
-        pen.setWidth(4)
-        pen.setColor(QColor("#ff6b6b"))
+        pen.setWidth(3)
+        pen.setColor(QColor("#e74c3c"))
         series.setPen(pen)
         
         # Chart
         chart = QChart()
         chart.addSeries(series)
-        chart.setTitle("📈 טמפרטורה לאורך 5 ימים")
+        chart.setTitle("🌡️ טמפרטורה ממוצעת (°C)")
         chart.setAnimationOptions(QChart.SeriesAnimations)
         chart.setBackgroundRoundness(15)
         
@@ -198,51 +197,8 @@ class WeatherComponent(QWidget):
         series.attachAxis(axis_x)
         
         axis_y = QValueAxis()
-        axis_y.setTitleText("טמפרטורה (°C)")
-        axis_y.setLabelsColor(QColor("#333"))
         axis_y.setRange(0, 40)
-        chart.addAxis(axis_y, Qt.AlignLeft)
-        series.attachAxis(axis_y)
-        
-        chart.legend().setAlignment(Qt.AlignTop)
-        
-        # Chart View
-        chart_view = QChartView(chart)
-        chart_view.setRenderHint(QPainter.Antialiasing)
-        chart_view.setMinimumHeight(350)
-        
-        self.temp_series = series
-        self.temp_axis_x = axis_x
-        self.temp_axis_y = axis_y
-        
-        return chart_view
-    
-    def _create_humidity_chart(self):
-        """גרף בר - לחות"""
-        # Bar Set
-        bar_set = QBarSet("לחות (%)")
-        bar_set.setColor(QColor("#4facfe"))
-        
-        # Series
-        series = QBarSeries()
-        series.append(bar_set)
-        
-        # Chart
-        chart = QChart()
-        chart.addSeries(series)
-        chart.setTitle("💧 לחות יחסית")
-        chart.setAnimationOptions(QChart.SeriesAnimations)
-        chart.setBackgroundRoundness(15)
-        
-        # Axes
-        axis_x = QBarCategoryAxis()
-        axis_x.setLabelsColor(QColor("#333"))
-        chart.addAxis(axis_x, Qt.AlignBottom)
-        series.attachAxis(axis_x)
-        
-        axis_y = QValueAxis()
-        axis_y.setRange(0, 100)
-        axis_y.setTitleText("לחות (%)")
+        axis_y.setTitleText("°C")
         axis_y.setLabelsColor(QColor("#333"))
         chart.addAxis(axis_y, Qt.AlignLeft)
         series.attachAxis(axis_y)
@@ -254,15 +210,61 @@ class WeatherComponent(QWidget):
         chart_view.setRenderHint(QPainter.Antialiasing)
         chart_view.setMinimumHeight(300)
         
+        # Store references
+        self.temp_series = series
+        self.temp_axis_x = axis_x
+        self.temp_axis_y = axis_y
+        
+        return chart_view
+    
+    def _create_humidity_chart(self):
+        """גרף לחות"""
+        # Bar Set
+        bar_set = QBarSet("לחות")
+        bar_set.setColor(QColor("#3498db"))
+        
+        # Series
+        series = QBarSeries()
+        series.append(bar_set)
+        
+        # Chart
+        chart = QChart()
+        chart.addSeries(series)
+        chart.setTitle("💧 לחות (%)")
+        chart.setAnimationOptions(QChart.SeriesAnimations)
+        chart.setBackgroundRoundness(15)
+        
+        # Axes
+        axis_x = QBarCategoryAxis()
+        axis_x.setLabelsColor(QColor("#333"))
+        chart.addAxis(axis_x, Qt.AlignBottom)
+        series.attachAxis(axis_x)
+        
+        axis_y = QValueAxis()
+        axis_y.setRange(0, 100)
+        axis_y.setTitleText("%")
+        axis_y.setLabelsColor(QColor("#333"))
+        chart.addAxis(axis_y, Qt.AlignLeft)
+        series.attachAxis(axis_y)
+        
+        chart.legend().setVisible(False)
+        
+        # Chart View
+        chart_view = QChartView(chart)
+        chart_view.setRenderHint(QPainter.Antialiasing)
+        chart_view.setMinimumHeight(300)
+        
+        # Store references
         self.humidity_bar_set = bar_set
         self.humidity_axis_x = axis_x
         
         return chart_view
     
     def _create_wind_chart(self):
-        """גרף שטח - רוח"""
-        # Line Series
+        """גרף רוח"""
+        # Series
         series = QLineSeries()
+        series.setName("רוח")
         
         # Area Series
         area_series = QAreaSeries(series)
@@ -306,90 +308,12 @@ class WeatherComponent(QWidget):
         chart_view.setRenderHint(QPainter.Antialiasing)
         chart_view.setMinimumHeight(300)
         
+        # Store references
         self.wind_series = series
         self.wind_axis_x = axis_x
         self.wind_axis_y = axis_y
         
         return chart_view
-    
-    def update_current_weather(self, weather_data):
-        """עדכן מזג אוויר נוכחי"""
-        self.temp_label.setText(f"{weather_data['temperature']}°C")
-        self.description_label.setText(weather_data['description'].title())
-        self.city_label.setText(f"📍 {weather_data['city']}")
-        self.feels_label.setText(f"🌡️ מרגיש כמו: {weather_data['feels_like']}°C")
-        self.humidity_label.setText(f"💧 לחות: {weather_data['humidity']}%")
-        self.wind_label.setText(f"💨 רוח: {weather_data['wind_speed']} km/h")
-        
-        # Weather icons
-        icon_map = {
-            "01": "☀️", "02": "⛅", "03": "☁️", "04": "☁️",
-            "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "🌨️", "50": "🌫️"
-        }
-        icon = icon_map.get(weather_data['icon'][:2], "🌤️")
-        self.weather_icon.setText(icon)
-    
-    def update_daily_forecast(self, daily_data):
-        """עדכן תחזית יומית + גרפים"""
-        # תרגום ימים לעברית
-        day_names_he = {
-            'Monday': 'שני', 'Tuesday': 'שלישי', 'Wednesday': 'רביעי',
-            'Thursday': 'חמישי', 'Friday': 'שישי', 'Saturday': 'שבת', 'Sunday': 'ראשון'
-        }
-        
-        # עדכן כרטיסים
-        while self.forecast_grid.count():
-            child = self.forecast_grid.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-        
-        # נתונים לגרפים
-        days = []
-        temps = []
-        humidity_values = []
-        wind_values = []
-        
-        for day in daily_data[:5]:
-            day['day_name_he'] = day_names_he.get(day['day_name'], day['day_name'][:3])
-            days.append(day['day_name_he'])
-            temps.append(day['temp_avg'])
-            
-            # לחות - נניח ערכים (API לא מחזיר, אז נעשה randomish)
-            humidity_values.append(60 + (day['temp_avg'] % 30))
-            
-            # רוח - נניח ערכים
-            wind_values.append(10 + (day['temp_avg'] % 15))
-            
-            card = self._create_day_card(day)
-            self.forecast_grid.addWidget(card, 0, len(temps)-1)
-        
-        # עדכן גרף טמפרטורה
-        self.temp_series.clear()
-        self.temp_axis_x.clear()
-        self.temp_axis_x.append(days)
-        for i, temp in enumerate(temps):
-            self.temp_series.append(i, temp)
-        
-        min_temp = min(temps) - 5
-        max_temp = max(temps) + 5
-        self.temp_axis_y.setRange(min_temp, max_temp)
-        
-        # עדכן גרף לחות
-        self.humidity_bar_set.remove(0, self.humidity_bar_set.count())
-        self.humidity_axis_x.clear()
-        self.humidity_axis_x.append(days)
-        for val in humidity_values:
-            self.humidity_bar_set.append(val)
-        
-        # עדכן גרף רוח
-        self.wind_series.clear()
-        self.wind_axis_x.clear()
-        self.wind_axis_x.append(days)
-        for i, wind in enumerate(wind_values):
-            self.wind_series.append(i, wind)
-        
-        max_wind = max(wind_values) + 10
-        self.wind_axis_y.setRange(0, max_wind)
     
     def _create_day_card(self, day_data):
         """צור כרטיס ליום"""
@@ -435,6 +359,86 @@ class WeatherComponent(QWidget):
         card_layout.addWidget(avg_label)
         
         return card
+    
+    def update_current_weather(self, weather_data):
+        """עדכן מזג אוויר נוכחי"""
+        self.temp_label.setText(f"{weather_data['temperature']}°C")
+        self.description_label.setText(weather_data['description'].title())
+        self.city_label.setText(f"📍 {weather_data['city']}")
+        self.feels_label.setText(f"🌡️ מרגיש כמו: {weather_data['feels_like']}°C")
+        self.humidity_label.setText(f"💧 לחות: {weather_data['humidity']}%")
+        self.wind_label.setText(f"💨 רוח: {weather_data['wind_speed']} km/h")
+        
+        # Weather icons
+        icon_map = {
+            "01": "☀️", "02": "⛅", "03": "☁️", "04": "☁️",
+            "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "🌨️", "50": "🌫️"
+        }
+        icon = icon_map.get(weather_data['icon'][:2], "🌤️")
+        self.weather_icon.setText(icon)
+    
+    def update_daily_forecast(self, daily_data):
+        """
+        עדכן תחזית יומית + גרפים
+        ✅ תיקון: שימוש בנתוני לחות ורוח אמיתיים מה-API
+        """
+        # תרגום ימים לעברית
+        day_names_he = {
+            'Monday': 'שני', 'Tuesday': 'שלישי', 'Wednesday': 'רביעי',
+            'Thursday': 'חמישי', 'Friday': 'שישי', 'Saturday': 'שבת', 'Sunday': 'ראשון'
+        }
+        
+        # עדכן כרטיסים
+        while self.forecast_grid.count():
+            child = self.forecast_grid.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        # נתונים לגרפים
+        days = []
+        temps = []
+        humidity_values = []
+        wind_values = []
+        
+        for day in daily_data[:5]:
+            day['day_name_he'] = day_names_he.get(day['day_name'], day['day_name'][:3])
+            days.append(day['day_name_he'])
+            temps.append(day['temp_avg'])
+            
+            # ✅ תיקון קריטי: שימוש בנתונים אמיתיים מה-API
+            humidity_values.append(day.get('humidity_avg', 50))
+            wind_values.append(day.get('wind_speed_avg', 10))
+            
+            card = self._create_day_card(day)
+            self.forecast_grid.addWidget(card, 0, len(temps)-1)
+        
+        # עדכן גרף טמפרטורה
+        self.temp_series.clear()
+        self.temp_axis_x.clear()
+        self.temp_axis_x.append(days)
+        for i, temp in enumerate(temps):
+            self.temp_series.append(i, temp)
+        
+        min_temp = min(temps) - 5
+        max_temp = max(temps) + 5
+        self.temp_axis_y.setRange(min_temp, max_temp)
+        
+        # עדכן גרף לחות
+        self.humidity_bar_set.remove(0, self.humidity_bar_set.count())
+        self.humidity_axis_x.clear()
+        self.humidity_axis_x.append(days)
+        for val in humidity_values:
+            self.humidity_bar_set.append(val)
+        
+        # עדכן גרף רוח
+        self.wind_series.clear()
+        self.wind_axis_x.clear()
+        self.wind_axis_x.append(days)
+        for i, wind in enumerate(wind_values):
+            self.wind_series.append(i, wind)
+        
+        max_wind = max(wind_values) + 10 if wind_values else 50
+        self.wind_axis_y.setRange(0, max_wind)
     
     def show_error(self, error_msg):
         """הצג שגיאה"""
