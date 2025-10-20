@@ -146,10 +146,12 @@ class ChatComponent(QWidget):
                 border: 2px solid #e0e0e0;
                 border-radius: 25px;
                 background-color: #f9f9f9;
+                color: #000000; /* ✅ תיקון: צבע המלל המוקלד מוגדר לשחור */
             }
             QLineEdit:focus {
                 border: 2px solid #1a73e8;
                 background-color: white;
+                color: #000000; /* ✅ תיקון: צבע המלל במצב פוקוס מוגדר לשחור */
             }
         """)
         self.input_field.returnPressed.connect(self._on_send_message)

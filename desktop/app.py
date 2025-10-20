@@ -1,11 +1,14 @@
 import sys
 from PySide6.QtWidgets import QApplication
-
+from PySide6.QtCore import QThreadPool
 from newsdesk.infra.http.news_api_client import NewsApiClient
 from newsdesk.infra.http.auth_service_http import HttpAuthService
 from newsdesk.infra.auth.auth_manager import get_auth_manager
 from newsdesk.mvp.view.login_window import LoginWindow
 from newsdesk.mvp.presenter.login_presenter import LoginPresenter
+from newsdesk.mvp.view.main_window_microfrontends import MainWindowMicrofrontends
+from newsdesk.components.chat import ChatComponent, ChatPresenter
+from newsdesk.infra.http.news_api_client import NewsApiClient
 from newsdesk.mvp.view.main_window_microfrontends import MainWindowMicrofrontends
 from newsdesk.components.chat import ChatComponent, ChatPresenter
 

@@ -1,5 +1,4 @@
-import google.genai as genai
-
+import google.generativeai as genai 
 from typing import Dict, List, Any
 import os
 from dotenv import load_dotenv
@@ -16,7 +15,6 @@ class GeminiAPIGateway:
             raise ValueError("❌ GEMINI_API_KEY לא מוגדר ב-.env")
         
         # הגדרת API Key
-        genai.configure(api_key=self.api_key)
         
         # יצירת המודל
         self.model = genai.GenerativeModel("gemini-2.0-flash-exp")

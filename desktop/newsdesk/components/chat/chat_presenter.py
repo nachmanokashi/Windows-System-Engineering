@@ -25,7 +25,7 @@ class ChatPresenter(QObject):
         
         try:
             # שלח ל-API
-            response = self.api_client.post("/api/v1/gemini/chat", json={
+            response = self.api_client.post("/gemini/chat", json={
                 "message": message,
                 "session_id": self.session_id
             })
@@ -68,7 +68,7 @@ class ChatPresenter(QObject):
         print(f"🗑️ Clearing chat session: {self.session_id}")
         
         try:
-            self.api_client.delete(f"/api/v1/gemini/session/{self.session_id}")
+            self.api_client.delete(f"/gemini/session/{self.session_id}")
             print("✅ Chat session cleared")
         except Exception as e:
             print(f"⚠️ Failed to clear session: {e}")
@@ -76,7 +76,7 @@ class ChatPresenter(QObject):
     def load_history(self):
         """טען היסטוריה (אופציונלי)"""
         try:
-            response = self.api_client.get(f"/api/v1/gemini/history/{self.session_id}")
+            response = self.api_client.get(f"/gemini/history/{self.session_id}")
             
             if hasattr(response, 'status_code'):
                 if response.status_code == 200:
