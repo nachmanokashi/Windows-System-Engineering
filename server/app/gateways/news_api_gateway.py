@@ -1,7 +1,7 @@
 # server/app/gateways/news_api_gateway.py
 """
-API Gateway for News API
-מממש את תבנית Gateway לגישה לשירות חיצוני
+API Gateway for NewsAPI.ai (Event Registry)
+מממש את תבנית Gateway לגישה לשירות החיצוני
 """
 
 import requests
@@ -14,11 +14,11 @@ load_dotenv()
 
 
 class NewsAPIGateway:
-    """Gateway לשירות News API החיצוני"""
+    """Gateway לשירות NewsAPI.ai (Event Registry) החיצוני"""
     
     def __init__(self):
         self.api_key = os.getenv("NEWS_API_KEY")
-        self.base_url = os.getenv("NEWS_API_BASE_URL", "https://newsapi.org/v2")
+        self.base_url = "http://eventregistry.org/api/v1"
         
         if not self.api_key:
             raise ValueError("❌ NEWS_API_KEY לא מוגדר ב-.env")
@@ -29,20 +29,104 @@ class NewsAPIGateway:
             params["apiKey"] = self.api_key
             url = f"{self.base_url}/{endpoint}"
             
-            print(f"🌐 שולח בקשה ל-News API: {endpoint}")
+            print(f"🌐 שולח בקשה ל-NewsAPI.ai: {endpoint}")
             response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
             
             data = response.json()
             
-            if data.get("status") != "ok":
-                raise Exception(f"News API Error: {data.get('message', 'Unknown error')}")
+            # בדיקת שגיאות בפורמט של Event Registry
+            if "error" in data:
+                raise Exception(f"NewsAPI.ai Error: {data.get('error', 'Unknown error')}")
             
             return data
             
         except requests.exceptions.RequestException as e:
-            print(f"❌ שגיאה בקריאה ל-News API: {e}")
+            print(f"❌ שגיאה בקריאה ל-NewsAPI.ai: {e}")
             raise
+    
+    def _normalize_articles(self, raw_articles: List[Dict]) -> List[Dict]:
+        """המר מאמרים מפורמט Event Registry לפורמט אחיד"""
+        normalized = []
+        
+        for article in raw_articles:
+            try:
+                # חלץ את המקור
+                source = article.get("source", {})
+                source_name = source.get("title", "Unknown")
+                
+                # המר תאריך
+                date_str = article.get("dateTimePub") or article.get("dateTime")
+                published_at = self._parse_date(date_str)
+                
+                # בנה את המאמר המנורמל
+                normalized_article = {
+                    "source": source_name,
+                    "author": ", ".join(article.get("authors", [])) if article.get("authors") else None,
+                    "title": article.get("title", ""),
+                    "description": article.get("body", "")[:200] + "..." if article.get("body") else None,
+                    "url": article.get("url", ""),
+                    "image_url": article.get("image"),
+                    "published_at": published_at.isoformat() if published_at else None,
+                    "content": article.get("body"),
+                    "language": article.get("lang", "en"),
+                    "sentiment": article.get("sentiment"),
+                    "categories": [cat.get("label") for cat in article.get("categories", [])],
+                }
+                
+                normalized.append(normalized_article)
+            except Exception as e:
+                print(f"⚠️  שגיאה בנירמול מאמר: {e}")
+                continue
+        
+        return normalized
+    
+    def _parse_date(self, date_str: Optional[str]) -> Optional[datetime]:
+        """המר תאריך מ-Event Registry לפורמט שלנו"""
+        if not date_str:
+            return None
+        
+        try:
+            # Event Registry מחזיר תאריכים בפורמט ISO 8601
+            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        except Exception as e:
+            print(f"⚠️  שגיאה בפירוש תאריך: {date_str} - {e}")
+            return None
+    
+    def get_articles_by_keyword(
+        self, 
+        keyword: str,
+        language: str = "eng",
+        max_items: int = 20,
+        sort_by: str = "date"
+    ) -> List[Dict]:
+        """
+        קבל מאמרים לפי מילת חיפוש
+        
+        Args:
+            keyword: מילת החיפוש
+            language: שפה (eng, heb, deu, spa וכו')
+            max_items: מספר מקסימלי של תוצאות
+            sort_by: date, rel (relevance), socialScore
+        """
+        params = {
+            "action": "getArticles",
+            "keyword": keyword,
+            "articlesPage": 1,
+            "articlesCount": min(max_items, 100),
+            "articlesSortBy": sort_by,
+            "articlesSortByAsc": "false",
+            "dataType": ["news", "blog"],
+            "resultType": "articles",
+            "lang": language,
+        }
+        
+        data = self._make_request("article/getArticles", params)
+        
+        articles = data.get("articles", {}).get("results", [])
+        print(f"✅ התקבלו {len(articles)} מאמרים מ-NewsAPI.ai")
+        
+        return self._normalize_articles(articles)
     
     def get_top_headlines(
         self, 
@@ -51,23 +135,43 @@ class NewsAPIGateway:
         page_size: int = 20
     ) -> List[Dict]:
         """
-        קבל כותרות עיקריות
+        קבל כותרות עיקריות (נסה לחקות את הפונקציונליות המקורית)
         
-        Categories: business, entertainment, general, health, science, sports, technology
-        Countries: us, gb, il, etc.
+        Categories: business, technology, sports וכו'
         """
-        params = {
-            "country": country,
-            "pageSize": page_size
-        }
-        
+        # Event Registry עובד אחרת - נשתמש בחיפוש לפי מילת מפתח במקום קטגוריה
         if category:
-            params["category"] = category
+            # במקום URIs מורכבים, פשוט נחפש לפי מילת המפתח
+            keyword = category.lower()
+            
+            params = {
+                "action": "getArticles",
+                "keyword": keyword,
+                "articlesPage": 1,
+                "articlesCount": min(page_size, 100),
+                "articlesSortBy": "date",
+                "articlesSortByAsc": "false",
+                "dataType": ["news"],
+                "resultType": "articles",
+                "lang": "eng",
+            }
+        else:
+            # ללא קטגוריה - פשוט מאמרים אחרונים
+            params = {
+                "action": "getArticles",
+                "articlesPage": 1,
+                "articlesCount": min(page_size, 100),
+                "articlesSortBy": "date",
+                "articlesSortByAsc": "false",
+                "dataType": ["news"],
+                "resultType": "articles",
+                "lang": "eng",
+            }
         
-        data = self._make_request("top-headlines", params)
+        data = self._make_request("article/getArticles", params)
         
-        articles = data.get("articles", [])
-        print(f"✅ התקבלו {len(articles)} מאמרים מ-News API")
+        articles = data.get("articles", {}).get("results", [])
+        print(f"✅ התקבלו {len(articles)} מאמרים מ-NewsAPI.ai (קטגוריה: {category or 'כללי'})")
         
         return self._normalize_articles(articles)
     
@@ -76,28 +180,33 @@ class NewsAPIGateway:
         query: str,
         from_date: Optional[datetime] = None,
         to_date: Optional[datetime] = None,
-        language: str = "en",
+        language: str = "eng",
         page_size: int = 20
     ) -> List[Dict]:
         """
         חפש מאמרים לפי מילות חיפוש
         """
         params = {
-            "q": query,
-            "language": language,
-            "pageSize": page_size,
-            "sortBy": "publishedAt"
+            "action": "getArticles",
+            "keyword": query,
+            "articlesPage": 1,
+            "articlesCount": min(page_size, 100),
+            "articlesSortBy": "rel",  # relevance
+            "articlesSortByAsc": "false",
+            "dataType": ["news"],
+            "resultType": "articles",
+            "lang": language,
         }
         
         if from_date:
-            params["from"] = from_date.strftime("%Y-%m-%d")
+            params["dateStart"] = from_date.strftime("%Y-%m-%d")
         
         if to_date:
-            params["to"] = to_date.strftime("%Y-%m-%d")
+            params["dateEnd"] = to_date.strftime("%Y-%m-%d")
         
-        data = self._make_request("everything", params)
+        data = self._make_request("article/getArticles", params)
         
-        articles = data.get("articles", [])
+        articles = data.get("articles", {}).get("results", [])
         print(f"✅ התקבלו {len(articles)} מאמרים עבור חיפוש: '{query}'")
         
         return self._normalize_articles(articles)
@@ -110,58 +219,12 @@ class NewsAPIGateway:
     ) -> List[Dict]:
         """קבל מאמרים לפי נושא מהימים האחרונים"""
         from_date = datetime.utcnow() - timedelta(days=days_back)
+        
         return self.search_articles(
             query=topic,
             from_date=from_date,
             page_size=page_size
         )
-    
-    def _normalize_articles(self, articles: List[Dict]) -> List[Dict]:
-        """
-        המר את פורמט News API לפורמט שלנו
-        """
-        normalized = []
-        
-        for article in articles:
-            # דלג על מאמרים ללא כותרת או תוכן
-            if not article.get("title") or article.get("title") == "[Removed]":
-                continue
-            
-            # המר לפורמט שלנו
-            normalized_article = {
-                "title": article.get("title", ""),
-                "summary": article.get("description", "")[:500] if article.get("description") else "",
-                "content": article.get("content", ""),
-                "url": article.get("url", ""),
-                "source": article.get("source", {}).get("name", "Unknown"),
-                "category": self._map_category(article),
-                "image_url": article.get("urlToImage", ""),
-                "thumb_url": article.get("urlToImage", ""),
-                "published_at": self._parse_date(article.get("publishedAt")),
-                "author": article.get("author", "")
-            }
-            
-            normalized.append(normalized_article)
-        
-        return normalized
-    
-    def _map_category(self, article: Dict) -> str:
-        """נסה לזהות קטגוריה מהמאמר"""
-        # ניתן להשתמש בהמון היוריסטיקות כאן
-        # לעת עתה, נחזיר "General"
-        return "General"
-    
-    def _parse_date(self, date_str: Optional[str]) -> Optional[datetime]:
-        """המר תאריך מ-News API לפורמט שלנו"""
-        if not date_str:
-            return None
-        
-        try:
-            # News API מחזיר תאריכים בפורמט ISO 8601
-            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        except Exception as e:
-            print(f"⚠️  שגיאה בפירוש תאריך: {date_str} - {e}")
-            return None
 
 
 # ============================================
