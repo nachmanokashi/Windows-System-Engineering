@@ -40,7 +40,6 @@ app.include_router(llm_controller.router, prefix=settings.API_PREFIX)
 app.include_router(likes_controller.router, prefix=settings.API_PREFIX)
 app.include_router(admin_controller.router, prefix=settings.API_PREFIX) 
 app.include_router(gemini_controller.router, prefix=settings.API_PREFIX)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/")
 def root():
