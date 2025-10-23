@@ -1,8 +1,3 @@
-# desktop/newsdesk/components/chat/chat_presenter.py
-"""
-Chat Presenter - לוגיקה לצ'אט AI
-"""
-
 from PySide6.QtCore import QObject
 
 
