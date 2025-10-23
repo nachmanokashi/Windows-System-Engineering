@@ -9,7 +9,7 @@ class AnimatedButton(QPushButton):
     """כפתור עם אנימציה"""
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
-        self.setMinimumHeight(45)  # ← הקטנתי מ-50
+        self.setMinimumHeight(45)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         
         # Shadow effect
@@ -28,7 +28,7 @@ class LoginWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("NewsDesk - Welcome")
-        self.setFixedSize(450, 600)  # ← הקטנתי מ-500x700 ל-450x600
+        self.setFixedSize(450, 600)  
         self.setModal(True)
         
         # Remove window frame for custom design
@@ -70,9 +70,8 @@ class LoginWindow(QDialog):
         container.setGraphicsEffect(shadow)
         
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(40, 50, 40, 50)  # ← הקטנתי margins
-        layout.setSpacing(20)  # ← הקטנתי מ-25
-        
+        layout.setContentsMargins(40, 50, 40, 50) 
+        layout.setSpacing(20)  
         # Close button
         close_btn = QPushButton("✕", container)
         close_btn.setGeometry(400, 20, 30, 30)
@@ -97,7 +96,7 @@ class LoginWindow(QDialog):
         
         logo = QLabel("📰")
         logo_font = QFont()
-        logo_font.setPointSize(50)  # ← הקטנתי מ-60
+        logo_font.setPointSize(50)  
         logo.setFont(logo_font)
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo_layout.addWidget(logo)
@@ -107,7 +106,7 @@ class LoginWindow(QDialog):
         # Title
         title = QLabel("NewsDesk")
         title_font = QFont()
-        title_font.setPointSize(28)  # ← הקטנתי מ-32
+        title_font.setPointSize(28) 
         title_font.setBold(True)
         title_font.setFamily("Segoe UI")
         title.setFont(title_font)
@@ -134,12 +133,12 @@ class LoginWindow(QDialog):
         """)
         layout.addWidget(subtitle)
         
-        layout.addSpacing(15)  # ← הקטנתי מ-20
+        layout.addSpacing(15) 
         
         # Username input
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username")
-        self.username_input.setMinimumHeight(50)  # ← הקטנתי מ-55
+        self.username_input.setMinimumHeight(50) 
         self.username_input.setStyleSheet("""
             QLineEdit {
                 background-color: rgba(255, 255, 255, 0.05);

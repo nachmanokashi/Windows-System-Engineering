@@ -1,7 +1,6 @@
-# server/app/mvc/models/articles/article_entity.py
 from sqlalchemy import Column, Integer, String, Text, DateTime
 from datetime import datetime
-from app.mvc.models.base import Base  # ✅ ייבוא מ-Base מרכזי
+from app.mvc.models.base import Base  
 
 
 class Article(Base):

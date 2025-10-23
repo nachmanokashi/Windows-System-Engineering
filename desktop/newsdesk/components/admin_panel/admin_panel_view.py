@@ -138,7 +138,6 @@ class ArticleFormDialog(QDialog):
         self.classify_btn.setEnabled(True)
         self.classify_btn.setText("🤖 Auto-Classify")
 
-    # IMPORTANT: presenter מצפה למתודה הזו
     def get_form_data(self) -> Dict[str, Any]:
         return {
             "title": self.title_input.text().strip(),
@@ -150,7 +149,6 @@ class ArticleFormDialog(QDialog):
             "image_url": self.image_input.text().strip() or None
         }
 
-    # לשמירה על תאימות אם ה-presenter קורא get_data()
     def get_data(self) -> Dict[str, Any]:
         return self.get_form_data()
 
@@ -172,7 +170,7 @@ class AdminPanelComponent(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.presenter = None  # ימנע AttributeError בבדיקת main window
+        self.presenter = None  
         self._categories: List[str] = []
         self._setup_ui()
 

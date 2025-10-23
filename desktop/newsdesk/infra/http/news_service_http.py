@@ -1,4 +1,3 @@
-# desktop/newsdesk/infra/http/news_service_http.py
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from newsdesk.mvp.model.article import Article

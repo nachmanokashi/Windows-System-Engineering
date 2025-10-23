@@ -1,8 +1,3 @@
-"""
-Hugging Face Service - אינטגרציה עם Hugging Face API
-מספק: Sentiment Analysis, Summarization, Translation, Classification
-"""
-
 from typing import Dict, Any, List, Optional
 from app.core.gateway import get_gateway
 from app.core.config import get_settings

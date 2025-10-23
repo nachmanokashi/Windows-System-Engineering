@@ -1,7 +1,3 @@
-# desktop/newsdesk/mvp/view/components/article_details/article_details_presenter.py
-"""
-ArticleDetailsPresenter - הלוגיקה של ArticleDetailsComponent
-"""
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 from typing import TYPE_CHECKING, Optional, Dict, List # הוספנו List
 
@@ -22,8 +18,7 @@ class WorkerThread(QThread):
         self.func = func
         self.args = args
         self.kwargs = kwargs
-        # Set parent to manage lifetime? Maybe not needed if presenter manages manually.
-        # self.setParent(kwargs.get('parent', None))
+
     def run(self):
         try:
             result = self.func(*self.args, **self.kwargs)
@@ -42,7 +37,6 @@ class ArticleDetailsPresenter(QObject):
         self.view = view
         self.news_service = news_service
         self.likes_service: Optional[HttpLikesService] = None
-        # --- שינוי כאן: רשימה לניהול Threads ---
         self.active_threads: List[WorkerThread] = []
         self.current_stats: Dict[int, Dict] = {}
 
@@ -51,32 +45,29 @@ class ArticleDetailsPresenter(QObject):
 
     def _start_worker(self, func, *args, finished_slot=None, error_slot=None, **kwargs):
         """Helper method to start and manage WorkerThreads"""
-        # נקה threads קודמים מאותו סוג (אם צריך למנוע כפילות)
-        # למשל, אם לא רוצים שטעינת הלייקים תרוץ פעמיים
+
         thread = WorkerThread(func, *args, **kwargs)
         if finished_slot:
             thread.finished.connect(finished_slot)
         if error_slot:
             thread.error.connect(error_slot)
-        # חבר פונקציה שתנקה את ה-thread מהרשימה כשהוא מסיים
         thread.finished.connect(lambda t=thread: self._remove_thread(t))
-        thread.error.connect(lambda e, t=thread: self._remove_thread(t)) # נקה גם בשגיאה
+        thread.error.connect(lambda e, t=thread: self._remove_thread(t)) 
         self.active_threads.append(thread)
         thread.start()
-        return thread # החזר את ה-thread אם צריך אותו ספציפית
+        return thread 
 
     def _remove_thread(self, thread: WorkerThread):
         """Removes a thread from the active list"""
         try:
             self.active_threads.remove(thread)
         except ValueError:
-            pass # Thread already removed or wasn't added properly
+            pass 
 
     def load_article_details(self, article_id: int) -> None:
         """Loads the full article details and like status from the server."""
         self.view.show_loading(f"Loading article {article_id}...")
-        # נקה threads קודמים של טעינת *כתבה* ספציפית זו (אם רוצים)
-        # self.cleanup() # אפשרות קיצונית יותר: נקה הכל לפני טעינה חדשה
+      
         self.current_stats.pop(article_id, None)
 
         # טען תוכן כתבה
@@ -92,14 +83,13 @@ class ArticleDetailsPresenter(QObject):
         if article_obj and isinstance(article_obj, Article):
             self.view.display_article(article_obj)
             article_id_int = int(article_obj.id)
-            # בדוק אם גם הסטטוס נטען
+
             if article_id_int in self.current_stats:
                 self.view.update_like_buttons(self.current_stats[article_id_int])
                 self.view.hide_loading()
         else:
             print(f"Error: Did not receive a valid Article object. Got: {type(article_obj)}")
-            # אם הכתבה נכשלה, עדיין צריך להסתיר טעינה אם הסטטוס יצליח
-            # זה יטופל ב-_on_stats_loaded
+
             self._on_load_error("Article data not found or invalid.")
 
     def _load_like_stats(self, article_id: int):
@@ -116,10 +106,9 @@ class ArticleDetailsPresenter(QObject):
     def _on_stats_loaded(self, article_id: int, stats: Dict):
         print(f"Stats loaded for article {article_id}: {stats}")
         self.current_stats[article_id] = stats
-        # עדכן כפתורים רק אם ה-View מציג את המאמר הזה
         if self.view.current_article_obj and int(self.view.current_article_obj.id) == article_id:
             self.view.update_like_buttons(stats)
-            self.view.hide_loading() # הסתר טעינה אחרי ששניהם נטענו
+            self.view.hide_loading() 
 
     def _on_stats_load_error(self, article_id: int, error: str):
         print(f"Error loading stats for article {article_id}: {error}")
@@ -168,7 +157,6 @@ class ArticleDetailsPresenter(QObject):
 
     def _on_toggle_finished(self, article_id: int, result: Dict):
         print(f"Presenter: Toggle finished for {article_id}, result: {result}")
-        # הפעל מחדש כפתורים רק אם ה-View עדיין מציג את המאמר הזה
         if self.view.current_article_obj and int(self.view.current_article_obj.id) == article_id:
             if hasattr(self.view, 'like_button'): self.view.like_button.setEnabled(True)
             if hasattr(self.view, 'dislike_button'): self.view.dislike_button.setEnabled(True)
@@ -192,12 +180,10 @@ class ArticleDetailsPresenter(QObject):
 
     def _on_load_error(self, error: str) -> None:
         """Called when there is an error during article loading."""
-        # אם טעינת הכתבה נכשלה, צריך להסתיר טעינה בכל מקרה
         self.view.hide_loading()
         print(f"Error loading article details: {error}")
         self.view.show_error(f"Failed to load article details: {error}")
 
-    # --- שינוי כאן: לולאה על כל ה-Threads הפעילים ---
     def cleanup(self) -> None:
         """Cleans up all active threads."""
         print(f"Cleaning up {len(self.active_threads)} active threads in ArticleDetailsPresenter...")
@@ -208,10 +194,9 @@ class ArticleDetailsPresenter(QObject):
             try:
                 if thread.isRunning():
                     print(f"Stopping thread {thread}...")
-                    thread.quit() # Request termination
-                    if not thread.wait(1500): # Wait up to 1.5 seconds
+                    thread.quit() 
+                    if not thread.wait(1500):
                          print(f"Warning: Thread {thread} did not terminate gracefully.")
-                         # thread.terminate() # Force terminate if needed (use with caution)
                 print(f"Thread {thread} finished/stopped.")
             except Exception as e:
                 print(f"Error during thread cleanup: {e}")

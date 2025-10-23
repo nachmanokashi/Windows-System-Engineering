@@ -1,4 +1,3 @@
-# app/mvc/models/users/user_repository.py
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func

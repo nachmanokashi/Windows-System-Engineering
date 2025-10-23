@@ -1,25 +1,11 @@
-# client/newsdesk/mvp/view/components/base_component.py
-"""
-BaseComponent - מחלקת בסיס לכל ה-Microfrontends
-
-כל component יורש ממחלקה זו ומקבל:
-- מחזור חיים (lifecycle): on_mount, on_unmount
-- ממשק אחיד
-- ניהול state בסיסי
-"""
 from PySide6.QtWidgets import QWidget, QVBoxLayout
-from abc import ABC, abstractmethod, ABCMeta # <-- 1. ייבאנו ABCMeta
+from abc import ABC, abstractmethod, ABCMeta
 from typing import Optional, Any, Dict
 
-#
-# 2. יצרנו "מנהל-על" (Metaclass) שמשלב את המנהל של QWidget ואת המנהל של ABC
-#
+
 class QWidgetABCMeta(type(QWidget), ABCMeta):
     pass
 
-#
-# 3. השתמשנו במנהל-העל החדש בשורת הגדרת המחלקה
-#
 class BaseComponent(QWidget, ABC, metaclass=QWidgetABCMeta):
     """
     מחלקת בסיס לכל ה-Components

@@ -1,4 +1,3 @@
-# server/app/mvc/models/likes/likes_service.py
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,17 +20,16 @@ class LikesService:
             existing = self.db.query(ArticleLike).filter(
                 ArticleLike.article_id == article_id,
                 ArticleLike.user_id == user_id
-            ).first() # מצא את הריאקציה הקיימת
+            ).first()
 
             if existing:
-                if existing.is_like: # אם זה לייק
-                    self.db.delete(existing) # מחק אותו
+                if existing.is_like:
+                    self.db.delete(existing) 
                     print(f"User {user_id} removed like from article {article_id}")
-                else: # אם זה דיסלייק
-                    existing.is_like = True # הפוך ללייק
+                else: 
+                    existing.is_like = True 
                     print(f"User {user_id} switched dislike to like on article {article_id}")
             else:
-                # אין ריאקציה, צור לייק חדש
                 new_like = ArticleLike(article_id=article_id, user_id=user_id, is_like=True)
                 self.db.add(new_like)
                 print(f"User {user_id} liked article {article_id}")
@@ -42,7 +40,7 @@ class LikesService:
             self.db.rollback()
             print(f"❌ DB Error in toggle_like for article {article_id}, user {user_id}: {e}")
             traceback.print_exc()
-            raise # זרוק את השגיאה חזרה לקונטרולר
+            raise 
             
         # החזר סטטוס מעודכן
         return self.get_article_stats(article_id, user_id)
@@ -59,14 +57,13 @@ class LikesService:
             ).first()
 
             if existing:
-                if not existing.is_like: # אם זה דיסלייק
-                    self.db.delete(existing) # מחק אותו
+                if not existing.is_like: 
+                    self.db.delete(existing)
                     print(f"User {user_id} removed dislike from article {article_id}")
-                else: # אם זה לייק
-                    existing.is_like = False # הפוך לדיסלייק
+                else: 
+                    existing.is_like = False
                     print(f"User {user_id} switched like to dislike on article {article_id}")
             else:
-                # אין ריאקציה, צור דיסלייק חדש
                 new_dislike = ArticleLike(article_id=article_id, user_id=user_id, is_like=False)
                 self.db.add(new_dislike)
                 print(f"User {user_id} disliked article {article_id}")
@@ -79,7 +76,6 @@ class LikesService:
             traceback.print_exc()
             raise
 
-        # החזר סטטוס מעודכן
         return self.get_article_stats(article_id, user_id)
 
     # ========================================
@@ -97,7 +93,7 @@ class LikesService:
         except SQLAlchemyError as e:
             print(f"❌ DB Error in _get_likes_count for article {article_id}: {e}")
             traceback.print_exc()
-            return 0 # החזר 0 במקרה של שגיאה
+            return 0 
 
     def _get_dislikes_count(self, article_id: int) -> int:
         """סופר דיסלייקים"""
@@ -154,5 +150,4 @@ class LikesService:
         print(f"📊 Stats for article {article_id}: {stats}")
         return stats
 
-# שמירה על תאימות לאחור אם קובץ אחר משתמש בשם הישן
 LikeService = LikesService

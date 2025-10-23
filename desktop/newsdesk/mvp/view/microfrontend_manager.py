@@ -1,13 +1,3 @@
-# client/newsdesk/mvp/view/microfrontend_manager.py
-"""
-MicrofrontendManager - מנהל את ה-Components
-
-תפקידים:
-1. רישום components
-2. החלפת components
-3. ניהול מחזור החיים (lifecycle)
-4. העברת נתונים בין components
-"""
 from typing import Dict, Type, Optional, Any
 from PySide6.QtWidgets import QWidget, QStackedWidget
 from newsdesk.components.base_component import BaseComponent
@@ -72,7 +62,6 @@ class MicrofrontendManager:
             print(f"❌ Component '{name}' not registered!")
             return
         
-        # אם זה אותו component, אל תעשה כלום
         if self._current_component_name == name:
             print(f"ℹ️ Component '{name}' already loaded")
             return
@@ -83,7 +72,6 @@ class MicrofrontendManager:
         
         # צור או קבל instance של ה-component החדש
         if name not in self._component_instances:
-            # צור instance חדש
             component_class = self._registered_components[name]
             component_instance = component_class(parent=self.container)
             self._component_instances[name] = component_instance
@@ -94,7 +82,6 @@ class MicrofrontendManager:
         # קבל את ה-instance
         component = self._component_instances[name]
         
-        # העבר פרמטרים (אם יש)
         for key, value in kwargs.items():
             component.set_state(key, value)
         
@@ -188,28 +175,3 @@ class MicrofrontendManager:
             component.deleteLater()
             del self._component_instances[name]
             print(f"🗑️ Component '{name}' instance removed")
-
-
-# ============================================
-# דוגמה לשימוש (לא חלק מהקובץ - רק הסבר)
-# ============================================
-
-"""
-# יצירת המנהל
-container = QStackedWidget()
-manager = MicrofrontendManager(container)
-
-# רישום components
-manager.register_component("articles_list", ArticlesListComponent)
-manager.register_component("article_details", ArticleDetailsComponent)
-manager.register_component("charts", ChartsComponent)
-
-# טעינת component ראשון
-manager.load_component("articles_list")
-
-# ניווט לפרטי מאמר
-manager.navigate_to("article_details", article_id=123)
-
-# חזרה לרשימה
-manager.navigate_to("articles_list")
-"""

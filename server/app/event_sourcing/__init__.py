@@ -1,8 +1,3 @@
-# server/app/event_sourcing/__init__.py
-"""
-Event Sourcing Module
-"""
-
 from .events import (
     BaseEvent,
     EventType,
@@ -39,7 +34,6 @@ __all__ = [
     "ArticleDislikedEvent",
     "LikeRemovedEvent",
     
-    # Event Store
     "EventStore",
     "get_event_store"
 ]

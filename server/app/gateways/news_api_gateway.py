@@ -1,9 +1,3 @@
-# server/app/gateways/news_api_gateway.py
-"""
-API Gateway for NewsAPI.ai (Event Registry)
-מממש את תבנית Gateway לגישה לשירות החיצוני
-"""
-
 import requests
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
@@ -51,15 +45,12 @@ class NewsAPIGateway:
         
         for article in raw_articles:
             try:
-                # חלץ את המקור
                 source = article.get("source", {})
                 source_name = source.get("title", "Unknown")
                 
-                # המר תאריך
                 date_str = article.get("dateTimePub") or article.get("dateTime")
                 published_at = self._parse_date(date_str)
                 
-                # בנה את המאמר המנורמל
                 normalized_article = {
                     "source": source_name,
                     "author": ", ".join(article.get("authors", [])) if article.get("authors") else None,
@@ -87,7 +78,6 @@ class NewsAPIGateway:
             return None
         
         try:
-            # Event Registry מחזיר תאריכים בפורמט ISO 8601
             return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         except Exception as e:
             print(f"⚠️  שגיאה בפירוש תאריך: {date_str} - {e}")
@@ -139,9 +129,7 @@ class NewsAPIGateway:
         
         Categories: business, technology, sports וכו'
         """
-        # Event Registry עובד אחרת - נשתמש בחיפוש לפי מילת מפתח במקום קטגוריה
         if category:
-            # במקום URIs מורכבים, פשוט נחפש לפי מילת המפתח
             keyword = category.lower()
             
             params = {
@@ -156,7 +144,6 @@ class NewsAPIGateway:
                 "lang": "eng",
             }
         else:
-            # ללא קטגוריה - פשוט מאמרים אחרונים
             params = {
                 "action": "getArticles",
                 "articlesPage": 1,
@@ -191,7 +178,7 @@ class NewsAPIGateway:
             "keyword": query,
             "articlesPage": 1,
             "articlesCount": min(page_size, 100),
-            "articlesSortBy": "rel",  # relevance
+            "articlesSortBy": "rel", 
             "articlesSortByAsc": "false",
             "dataType": ["news"],
             "resultType": "articles",

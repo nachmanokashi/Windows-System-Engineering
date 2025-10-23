@@ -1,8 +1,3 @@
-# server/app/event_sourcing/event_store.py
-"""
-Event Store - שירות לשמירה וקריאה של אירועים
-זה הלב של Event Sourcing - כל אירוע עובר דרך כאן
-"""
 import json
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
@@ -294,7 +289,6 @@ class EventStore:
         """
         events = self.get_events_by_aggregate(aggregate_type, aggregate_id)
         
-        # State ריק
         state = {}
         
         # עבור על כל אירוע ובנה את ה-State
@@ -327,10 +321,6 @@ class EventStore:
                 state.update(updated_fields)
         
         return state
-    
-    # ============================================
-    # Snapshots (אופציונלי - לביצועים)
-    # ============================================
     
     def save_snapshot(
         self, 

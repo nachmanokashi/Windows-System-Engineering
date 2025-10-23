@@ -22,8 +22,6 @@ class HttpLikesService:
     def get_article_stats(self, article_id: int) -> Dict[str, Any]:
         return self._api.get(f"/articles/{article_id}/stats")
 
-    # --- כאן בוצע השינוי המרכזי ---
     def get_batch_stats(self, article_ids: List[int]) -> Dict[str, Any]:
         """קבלת סטטיסטיקות למספר מאמרים בבת אחת באמצעות POST"""
-        # 1. שולחים בקשת POST עם גוף JSON
         return self._api.post("/articles/batch-stats", json={"ids": article_ids})

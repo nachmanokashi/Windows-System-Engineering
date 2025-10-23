@@ -13,13 +13,9 @@ class GeminiAPIGateway:
         
         if not self.api_key:
             raise ValueError("❌ GEMINI_API_KEY לא מוגדר ב-.env")
-        
-        # הגדרת API Key
-        
+                
         # יצירת המודל
         self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
-        
-        # שמירת היסטוריית צ'אטים (session-based)
         self.chat_sessions = {}
         
         print("✅ Gemini Gateway initialized")
@@ -32,13 +28,10 @@ class GeminiAPIGateway:
     def send_message(self, session_id: str, message: str) -> Dict[str, Any]:
         """שלח הודעה ב-session קיים"""
         try:
-            # אם אין session - צור חדש
             if session_id not in self.chat_sessions:
                 self.start_chat_session(session_id)
             
             chat = self.chat_sessions[session_id]
-            
-            # שלח הודעה
             response = chat.send_message(message)
             
             return {
@@ -68,7 +61,7 @@ class GeminiAPIGateway:
         
         for message in chat.history:
             history.append({
-                "role": message.role,  # 'user' או 'model'
+                "role": message.role,
                 "content": message.parts[0].text
             })
         
@@ -86,16 +79,16 @@ class GeminiAPIGateway:
         """
         try:
             prompt = f"""
-אתה עוזר AI מומחה לניתוח חדשות.
+            אתה עוזר AI מומחה לניתוח חדשות.
 
-מאמר:
-כותרת: {article_title}
-תקציר: {article_summary}
+            מאמר:
+            כותרת: {article_title}
+            תקציר: {article_summary}
 
-שאלת המשתמש: {question}
+            שאלת המשתמש: {question}
 
-אנא ענה על השאלה בצורה ברורה ותמציתית בעברית.
-"""
+            אנא ענה על השאלה בצורה ברורה ותמציתית בעברית.
+            """
             
             response = self.model.generate_content(prompt)
             return response.text
@@ -109,17 +102,17 @@ class GeminiAPIGateway:
         """
         try:
             prompt = f"""
-נתח את הסנטימנט של הטקסט הבא:
+                נתח את הסנטימנט של הטקסט הבא:
 
-{text}
+                {text}
 
-החזר תשובה במבנה הבא:
-- סנטימנט כללי (חיובי/שלילי/ניטרלי)
-- ציון (0-100)
-- הסבר קצר
+                החזר תשובה במבנה הבא:
+                - סנטימנט כללי (חיובי/שלילי/ניטרלי)
+                - ציון (0-100)
+                - הסבר קצר
 
-תשובה בעברית.
-"""
+                תשובה בעברית.
+                """
             
             response = self.model.generate_content(prompt)
             return {

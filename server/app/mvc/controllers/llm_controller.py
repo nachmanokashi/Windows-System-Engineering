@@ -1,8 +1,3 @@
-# app/mvc/controllers/llm_controller.py
-"""
-LLM Controller - endpoints לעבודה עם AI/LLM
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, Body
 from typing import List
 from pydantic import BaseModel, Field

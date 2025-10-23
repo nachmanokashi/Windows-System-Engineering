@@ -1,4 +1,3 @@
-# server/app/mvc/models/articles/article_service.py
 from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session
 from app.mvc.models.articles.article_repository import ArticleRepository

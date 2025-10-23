@@ -1,9 +1,3 @@
-
-# server/app/event_sourcing/events.py
-"""
-Event Classes - כל סוגי האירועים במערכת
-כל אירוע מייצג פעולה שקרתה במערכת
-"""
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
@@ -314,9 +308,7 @@ class ArticleLikedEvent(BaseEvent):
 
 
 class ArticleDislikedEvent(BaseEvent):
-    """
-    אירוע דיסלייק למאמר
-    """
+
     
     def __init__(
         self, 
@@ -340,9 +332,6 @@ class ArticleDislikedEvent(BaseEvent):
 
 
 class LikeRemovedEvent(BaseEvent):
-    """
-    אירוע הסרת לייק/דיסלייק
-    """
     
     def __init__(
         self, 

@@ -45,16 +45,12 @@ class WeatherAPIGateway:
         }
     
     def get_daily_forecast(self, city: str = None) -> List[Dict]:
-        """
-        קבל תחזית ל-5 ימים עם נתוני לחות ורוח אמיתיים
-        ✅ תיקון: הוספת נתוני humidity ו-wind_speed אמיתיים
-        """
+
         city = city or self.default_city
         data = self._make_request("forecast", {"q": city})
         
         daily = {}
         
-        # ✅ איסוף נתונים לכל יום - כולל לחות ורוח!
         for item in data["list"]:
             date = datetime.fromtimestamp(item["dt"]).strftime("%Y-%m-%d")
             
@@ -63,8 +59,8 @@ class WeatherAPIGateway:
                     "date": date,
                     "day_name": datetime.fromtimestamp(item["dt"]).strftime("%A"),
                     "temps": [],
-                    "humidity": [],      # ✅ נתוני לחות אמיתיים
-                    "wind_speed": []     # ✅ נתוני רוח אמיתיים
+                    "humidity": [],      
+                    "wind_speed": []   
                 }
             
             # הוספת נתונים
@@ -72,7 +68,6 @@ class WeatherAPIGateway:
             daily[date]["humidity"].append(item["main"]["humidity"])
             daily[date]["wind_speed"].append(round(item["wind"]["speed"] * 3.6, 1))  # m/s to km/h
         
-        # ✅ בניית התוצאה עם ממוצעים
         result = []
         for date, info in list(daily.items())[:5]:
             result.append({
@@ -81,7 +76,6 @@ class WeatherAPIGateway:
                 "temp_min": min(info["temps"]),
                 "temp_max": max(info["temps"]),
                 "temp_avg": round(sum(info["temps"]) / len(info["temps"])),
-                # ✅ חישוב ממוצע לחות ורוח אמיתי
                 "humidity_avg": round(sum(info["humidity"]) / len(info["humidity"])),
                 "wind_speed_avg": round(sum(info["wind_speed"]) / len(info["wind_speed"]), 1)
             })

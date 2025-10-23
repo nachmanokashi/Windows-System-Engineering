@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Boolean, ForeignKey, DateTime
 from datetime import datetime
-from app.mvc.models.base import Base  # ✅ ייבוא מ-Base מרכזי
+from app.mvc.models.base import Base  
 
 
 class ArticleLike(Base):

@@ -1,9 +1,7 @@
-# newsdesk/infra/http/auth_service_http.py
 from typing import Dict, Any
 from newsdesk.infra.http.news_api_client import NewsApiClient
 
 class HttpAuthService:
-    """שירות Authentication"""
     
     def __init__(self, api: NewsApiClient) -> None:
         self._api = api

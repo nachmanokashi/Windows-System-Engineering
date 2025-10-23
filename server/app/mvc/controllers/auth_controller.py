@@ -1,9 +1,8 @@
-# app/mvc/controllers/auth_controller.py
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr, Field # <-- הוספנו ייבוא
-from typing import Optional # <-- הוספנו ייבוא
+from pydantic import BaseModel, EmailStr, Field 
+from typing import Optional 
 
 from app.core.db import get_db
 from app.core.auth_utils import get_current_user, get_current_active_user
@@ -23,7 +22,6 @@ from app.event_sourcing.events import (
 
 router = APIRouter(tags=["auth"])
 
-# --- הוספנו מודל קלט חדש עבור רישום ---
 class UserRegisterPayload(BaseModel):
     username: str = Field(..., min_length=3, max_length=100)
     email: EmailStr
@@ -35,9 +33,8 @@ class UserRegisterPayload(BaseModel):
 # ============================================
 
 @router.post("/auth/register")
-# --- שינינו את החתימה כאן ---
 def register(
-    payload: UserRegisterPayload, # מקבלים את הנתונים כמודל מגוף הבקשה
+    payload: UserRegisterPayload, 
     db: Session = Depends(get_db)
 ):
     """
@@ -46,7 +43,6 @@ def register(
     repo = UserRepository(db)
     event_store = get_event_store(db)
 
-    # --- משתמשים בנתונים מה-payload ---
     if repo.get_by_username(payload.username):
         raise HTTPException(status_code=400, detail="Username already exists")
 
@@ -78,8 +74,7 @@ def register(
 
         print(f"✅ User registered with ID: {user.id}, Event ID: {event_id}")
 
-        # מחזירים תגובה מעט שונה, רק את הנתונים הבסיסיים
-        return UserRead.model_validate(user) # המרה למודל קריאה
+        return UserRead.model_validate(user) 
 
     except Exception as e:
         print(f"Error during registration: {e}")
@@ -95,7 +90,7 @@ def register(
 
 @router.post("/auth/login", response_model=Token)
 def login(
-    payload: UserLogin, # כבר היה מוגדר נכון
+    payload: UserLogin, 
     request: Request,
     db: Session = Depends(get_db)
 ):
@@ -138,7 +133,6 @@ def login_form(
     """
     התחברות דרך OAuth2 form (לשימוש עם Swagger UI) - עם Event Sourcing!
     """
-    # קוד זה נשאר זהה כי הוא מקבל Form Data ולא JSON
     try:
         service = UserService(db)
         event_store = get_event_store(db)

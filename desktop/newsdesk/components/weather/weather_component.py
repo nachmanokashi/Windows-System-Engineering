@@ -22,7 +22,6 @@ class WeatherComponent(QWidget):
     
     def _setup_ui(self):
         """בניית הממשק"""
-        # Main layout
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -382,7 +381,6 @@ class WeatherComponent(QWidget):
         עדכן תחזית יומית + גרפים
         ✅ תיקון: שימוש בנתוני לחות ורוח אמיתיים מה-API
         """
-        # תרגום ימים לעברית
         day_names_he = {
             'Monday': 'שני', 'Tuesday': 'שלישי', 'Wednesday': 'רביעי',
             'Thursday': 'חמישי', 'Friday': 'שישי', 'Saturday': 'שבת', 'Sunday': 'ראשון'
@@ -405,7 +403,6 @@ class WeatherComponent(QWidget):
             days.append(day['day_name_he'])
             temps.append(day['temp_avg'])
             
-            # ✅ תיקון קריטי: שימוש בנתונים אמיתיים מה-API
             humidity_values.append(day.get('humidity_avg', 50))
             wind_values.append(day.get('wind_speed_avg', 10))
             

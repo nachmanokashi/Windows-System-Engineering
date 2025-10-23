@@ -1,14 +1,3 @@
-# newsdesk/mvp/presenter/base_presenter.py
-"""
-BasePresenter - מחלקת בסיס ל-Presenters במבנה MVP
-
-מספק:
-- שמירת הפניה ל-View
-- Thread pool להרצת עבודות ברקע
-- API נוח: _start_worker(fn, finished_slot=..., error_slot=..., **kwargs)
-- עזר להרצת קוד על ה-UI thread: run_on_ui(callable)
-"""
-
 from __future__ import annotations
 from typing import Any, Callable, Optional
 import traceback
@@ -18,8 +7,8 @@ from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, QTimer
 
 class _WorkerSignals(QObject):
     """סיגנלים פנימיים לעבודה אסינכרונית."""
-    finished = Signal(object)    # result
-    error = Signal(str)          # error message (stringified)
+    finished = Signal(object)   
+    error = Signal(str)          
 
 
 class _Worker(QRunnable):
@@ -40,7 +29,6 @@ class _Worker(QRunnable):
             self.signals.finished.emit(result)
         except Exception as e:
             tb = traceback.format_exc()
-            # מעבירים שגיאה כטקסט (כולל traceback) – נוח להצגה ב-UI/לוגים
             self.signals.error.emit(f"{e}\n{tb}")
 
 
@@ -96,10 +84,5 @@ class BasePresenter(QObject):
 
         self._thread_pool.start(worker)
 
-    # ניתן להרחיב כאן פונקציות חוצות פרזנטרים (ניטור, לוגים, ביטול משימות בעת סגירה וכו')
     def dispose(self) -> None:
-        """
-        נקודת הרחבה לניקוי משאבים אם תרצה. כברירת מחדל לא עוצר בכוח את ה-thread pool
-        (כי הוא globalInstance), אבל כאן אפשר לנתק סיגנלים/טיימרים ספציפיים.
-        """
         pass

@@ -1,4 +1,3 @@
-# server/app/mvc/models/articles/article_repository.py
 from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -9,14 +8,13 @@ class ArticleRepository:
         self.db = db
 
     def create(self, data: dict) -> Article:
-        row = Article(**data)  # יוצר אובייקט ORM מלא
+        row = Article(**data)  
         self.db.add(row)
         self.db.commit()
         self.db.refresh(row)
         return row
 
     def get(self, article_id: int) -> Optional[Article]:
-        # מחזיר אובייקט ORM מלא (לא SELECT חלקי)
         return self.db.query(Article).filter(Article.id == article_id).first()
 
     def list(self, category: Optional[str], page: int, page_size: int) -> Tuple[List[Article], int]:

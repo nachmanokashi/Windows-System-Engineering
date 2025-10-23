@@ -1,4 +1,3 @@
-# server/app/mvc/controllers/likes_controller.py
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from sqlalchemy.orm import Session

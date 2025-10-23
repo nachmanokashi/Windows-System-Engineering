@@ -79,17 +79,16 @@ class ArticlesListComponent(BaseComponent):
         print(f"View: Displaying {len(articles)} articles."); likes_data = likes_data or {}
         self.card_widgets.clear()
 
-        # --- ניקוי Layout בצורה בטוחה ---
-        # הסר הכל מה-layout פרט ל-stretch item האחרון (אם קיים)
+     
         stretch_item = None
         while self.scroll_layout.count() > 0:
             item = self.scroll_layout.takeAt(0)
-            if isinstance(item, QSpacerItem): # שמור את ה-stretch item
+            if isinstance(item, QSpacerItem): 
                 stretch_item = item
             else:
                 widget = item.widget()
                 if widget:
-                    widget.deleteLater() # מחק את הווידג'ט הקודם
+                    widget.deleteLater() 
 
         # --- הצג הודעה אם אין כתבות ---
         if not articles:
@@ -97,7 +96,6 @@ class ArticlesListComponent(BaseComponent):
             no_articles_label = QLabel("No articles found."); no_articles_label.setAlignment(Qt.AlignmentFlag.AlignCenter); no_articles_label.setStyleSheet("color: #7f8c8d; font-size: 16px; padding: 50px;"); self.scroll_layout.addWidget(no_articles_label) # פשוט הוסף
             self.update_status("No articles found.");
         else:
-            # --- הוסף כרטיסים חדשים ---
             print(f"View: Starting to add cards...")
             for i, article_data in enumerate(articles):
                 article_id_any = article_data.get("id");
@@ -105,22 +103,19 @@ class ArticlesListComponent(BaseComponent):
                 try: article_id = int(article_id_any)
                 except (ValueError, TypeError): print(f"View Warning: Skip article index {i} invalid ID '{article_id_any}'."); continue
                 stats = likes_data.get(article_id, {})
-                # print(f"View: Creating card for ID {article_id}") # צמצום הדפסות
                 card = ArticleCard(article_data, stats, parent=self.scroll_content_widget) # הגדר parent
                 card.clicked.connect(self.article_clicked.emit)
                 card.like_toggled.connect(self.like_toggled.emit)
                 card.dislike_toggled.connect(self.dislike_toggled.emit)
-                self.scroll_layout.addWidget(card) # פשוט הוסף בסוף
+                self.scroll_layout.addWidget(card) 
                 self.card_widgets[article_id] = card
             print(f"View: Finished adding {len(self.card_widgets)} cards.")
 
-        # --- הוסף את ה-stretch item מחדש בסוף ---
         if stretch_item:
              self.scroll_layout.addSpacerItem(stretch_item)
         else:
-             self.scroll_layout.addStretch(1) # או צור אחד חדש אם לא היה קיים
+             self.scroll_layout.addStretch(1) 
 
-        # --- עדכון מינימלי של גודל הווידג'ט הפנימי (יכול לעזור) ---
         self.scroll_content_widget.adjustSize()
         self.update_status(f"Showing {len(articles)} articles")
 

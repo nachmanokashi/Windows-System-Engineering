@@ -1,4 +1,3 @@
-# server/app/mvc/models/articles/article_schemas.py
 from pydantic import BaseModel, HttpUrl
 from typing import Optional, List
 from datetime import datetime
@@ -36,7 +35,6 @@ class ArticlesPage(BaseModel):
     meta: PageMeta
     items: List[ArticleRead]
 
-# אופציונלי: לצמצום טעויות ייבוא
 __all__ = [
     "ArticleBase",
     "ArticleCreate",

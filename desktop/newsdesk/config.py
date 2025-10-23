@@ -1,8 +1,3 @@
-# client/newsdesk/config.py
-"""
-תצורה מרכזית לאפליקציית הדסקטופ
-✅ תיקון: כל ה-URLs והגדרות במקום אחד
-"""
 import os
 from typing import Optional
 

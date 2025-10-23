@@ -1,10 +1,6 @@
 from typing import Optional, Dict, Any, List
 
 class AdminServiceHttp:
-    """
-    עטיפה לשירותי Admin מול ה-API.
-    חשוב: ה-Presenter משתמש במתודות כאן לפי השמות שלמטה.
-    """
 
     def __init__(self, api_client):
         self._api = api_client

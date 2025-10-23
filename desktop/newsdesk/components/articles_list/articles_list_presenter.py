@@ -1,17 +1,13 @@
-# client/newsdesk/components/articles_list/articles_list_presenter.py
-"""
-ArticlesListPresenter - הלוגיקה של ArticlesListComponent
-"""
-from PySide6.QtCore import QObject, QThread, Signal, Slot # הוספנו Slot
+from PySide6.QtCore import QObject, QThread, Signal, Slot 
 from typing import TYPE_CHECKING, Optional, List, Dict, Any
 
 if TYPE_CHECKING:
     from newsdesk.components.articles_list.articles_list_view import ArticlesListComponent
 
 from newsdesk.infra.http.news_service_http import HttpNewsService
-from newsdesk.infra.http.likes_service_http import HttpLikesService # הוספנו Likes Service
+from newsdesk.infra.http.likes_service_http import HttpLikesService 
 
-# WorkerThread (נשאר זהה)
+# WorkerThread 
 class WorkerThread(QThread):
     finished = Signal(object); error = Signal(str)
     def __init__(self, func, *args, **kwargs): super().__init__(); self.func = func; self.args = args; self.kwargs = kwargs
@@ -27,7 +23,7 @@ class ArticlesListPresenter(QObject):
         super().__init__()
         self.view = view
         self.news_service = news_service
-        self.likes_service = likes_service # Store likes service
+        self.likes_service = likes_service 
 
         # State
         self.current_page = 1; self.page_size = 20
@@ -37,9 +33,8 @@ class ArticlesListPresenter(QObject):
         self.cached_likes: Dict[int, Dict] = {}
 
         # Threads
-        self.active_threads: List[QThread] = [] # השתמשנו בשם העקבי
+        self.active_threads: List[QThread] = [] 
 
-    # --- הוספנו את פונקציות העזר החסרות ---
     def _start_worker(self, func, *args, finished_slot=None, error_slot=None, **kwargs):
         """Helper method to start and manage WorkerThreads"""
         thread = WorkerThread(func, *args, **kwargs)
@@ -58,9 +53,8 @@ class ArticlesListPresenter(QObject):
         try:
             self.active_threads.remove(thread)
         except ValueError:
-            pass # Thread already removed
+            pass 
 
-    # --- הפונקציות הבאות משתמשות עכשיו ב-_start_worker ---
 
     def load_articles(self, page: int = 1) -> None:
         """Loads articles from the server."""

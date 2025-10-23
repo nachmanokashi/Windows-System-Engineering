@@ -20,7 +20,6 @@ def enhance_article_with_scraping(article_data: dict) -> dict:
     if not article_data.get("url"):
         return article_data
     
-    # אם יש כבר תוכן מלא (יותר מ-1000 תווים), אל תגרוד
     if article_data.get("content") and len(article_data["content"]) > 1000:
         return article_data
     

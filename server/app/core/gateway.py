@@ -1,8 +1,3 @@
-"""
-API Gateway - מנהל את כל הקריאות לשירותים חיצוניים
-מיישם: Rate Limiting, Caching, Error Handling, Retry Logic
-"""
-
 import requests
 import time
 from typing import Optional, Dict, Any
@@ -147,7 +142,6 @@ class APIGateway:
                 logger.error(f"Unexpected error for {service_name}: {e}")
                 raise
         
-        # אם הגענו לכאן, כל הניסיונות נכשלו
         raise Exception(f"Failed to request {service_name} after {max_retries} attempts: {last_exception}")
     
     def get(self, url: str, service_name: str, **kwargs) -> Dict[str, Any]:

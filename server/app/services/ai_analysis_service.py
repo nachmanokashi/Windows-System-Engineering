@@ -1,7 +1,3 @@
-# app/services/ai_analysis_service.py
-"""
-AI Analysis Service - Sentiment + NER
-"""
 from typing import Dict, Any, List
 from app.services.uggingface_service import get_huggingface_service
 import json
@@ -22,7 +18,7 @@ class AIAnalysisService:
         # טקסט מלא לניתוח
         full_text = f"{title}. {summary}"
         if body:
-            full_text += f" {body[:500]}"  # רק 500 תווים ראשונים מה-body
+            full_text += f" {body[:500]}"  
         
         # 1. Sentiment Analysis
         sentiment = self.hf_service.analyze_sentiment(full_text)
@@ -67,10 +63,9 @@ class AIAnalysisService:
             )
             
             if isinstance(result, list):
-                # סנן ורק תנו entities בעלי ציון גבוה
                 entities = []
                 for entity in result:
-                    if entity.get("score", 0) > 0.7:  # רק confidence מעל 70%
+                    if entity.get("score", 0) > 0.7: 
                         entities.append({
                             "text": entity.get("word", ""),
                             "type": entity.get("entity_group", entity.get("entity", "UNKNOWN")),

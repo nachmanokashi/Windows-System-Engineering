@@ -1,4 +1,3 @@
-# newsdesk/infra/auth/auth_manager.py
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import json
@@ -15,7 +14,6 @@ class AuthManager:
         """שמירת טוקן והתחברות"""
         self._access_token = access_token
         self._user_data = user_data
-        # JWT tokens בפרויקט שלנו תקפים ל-24 שעות
         self._token_expires_at = datetime.now() + timedelta(hours=24)
     
     def logout(self) -> None:

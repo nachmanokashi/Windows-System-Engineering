@@ -1,4 +1,3 @@
-# app/mvc/controllers/articles_controller.py
 from fastapi import APIRouter, Depends, Query, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional

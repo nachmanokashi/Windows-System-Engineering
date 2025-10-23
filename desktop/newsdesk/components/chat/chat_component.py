@@ -1,8 +1,3 @@
-# desktop/newsdesk/components/chat/chat_component.py
-"""
-Chat Component - ממשק צ'אט עם Gemini AI
-"""
-
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, 
     QLineEdit, QPushButton, QLabel, QScrollArea, QFrame
@@ -28,7 +23,6 @@ class ChatBubble(QFrame):
         label.setTextFormat(Qt.PlainText)
         label.setFont(QFont("Segoe UI", 10))
         
-        # עיצוב לפי מי שכתב
         if is_user:
             self.setStyleSheet("""
                 QFrame {
@@ -146,12 +140,12 @@ class ChatComponent(QWidget):
                 border: 2px solid #e0e0e0;
                 border-radius: 25px;
                 background-color: #f9f9f9;
-                color: #000000; /* ✅ תיקון: צבע המלל המוקלד מוגדר לשחור */
+                color: #000000;
             }
             QLineEdit:focus {
                 border: 2px solid #1a73e8;
                 background-color: white;
-                color: #000000; /* ✅ תיקון: צבע המלל במצב פוקוס מוגדר לשחור */
+                color: #000000; 
             }
         """)
         self.input_field.returnPressed.connect(self._on_send_message)
@@ -182,17 +176,14 @@ class ChatComponent(QWidget):
     
     def add_message(self, message: str, is_user: bool):
         """הוסף הודעה לצ'אט"""
-        # הסר את ה-stretch האחרון
         count = self.messages_layout.count()
         if count > 0:
             item = self.messages_layout.itemAt(count - 1)
             if item.spacerItem():
                 self.messages_layout.removeItem(item)
         
-        # צור בועת צ'אט
         bubble = ChatBubble(message, is_user)
         
-        # Layout לבועה (לצד הנכון)
         bubble_layout = QHBoxLayout()
         if is_user:
             bubble_layout.addStretch()
@@ -202,11 +193,7 @@ class ChatComponent(QWidget):
             bubble_layout.addStretch()
         
         self.messages_layout.addLayout(bubble_layout)
-        
-        # הוסף stretch חדש
         self.messages_layout.addStretch()
-        
-        # גלול למטה
         self.messages_widget.updateGeometry()
     
     def clear_chat(self):
@@ -261,7 +248,6 @@ class ChatComponent(QWidget):
     def on_mount(self):
         """נקרא כשהקומפוננטה נטענת"""
         print("✅ ChatComponent mounted")
-        # הודעת פתיחה
         self.add_message("שלום! אני Gemini AI. במה אוכל לעזור לך היום?", is_user=False)
     
     def on_unmount(self):

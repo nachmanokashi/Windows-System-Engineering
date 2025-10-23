@@ -1,4 +1,3 @@
-# app/mvc/models/users/user_schemas.py
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime

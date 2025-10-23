@@ -1,4 +1,3 @@
-# app/core/config.py
 from functools import lru_cache
 from typing import List
 from pydantic_settings import BaseSettings
@@ -29,10 +28,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
-    # Hugging Face (לשלב הבא)
+    # Hugging Face 
     HUGGINGFACE_API_KEY: str = Field(default="", description="Hugging Face API Key")
     
-    # External APIs (לשלב הבא)
+    # External APIs 
     NEWS_API_KEY: str = Field(default="", description="News API Key")
 
     GUARDIAN_API_KEY: str = Field(default="", description="Guardian API Key")

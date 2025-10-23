@@ -166,10 +166,8 @@ class MainWindowMicrofrontends(QMainWindow):
         self.manager.register_component("articles_list", ArticlesListComponent)
         self.manager.register_component("article_details", ArticleDetailsComponent)
         self.manager.register_component("weather", WeatherComponent)
-        # ✅ הוספת רישום Chat Component 
         self.manager.register_component("chat", ChatComponent)
         
-        # --- רישום Admin Component (מותנה) ---
         if self.is_admin:
             self.manager.register_component("admin_panel", AdminPanelComponent)
             
@@ -180,7 +178,6 @@ class MainWindowMicrofrontends(QMainWindow):
         current_component = self.stacked_widget.widget(index)
         current_component_name = type(current_component).__name__ 
 
-        # ⬇️ תיקון: רשימת כל הרכיבים המוכרים שיש להם Presenter שאנחנו מאתחלים (הוספנו ChatComponent)
         recognized_components = (
             ArticlesListComponent, ArticleDetailsComponent, WeatherComponent, 
             AdminPanelComponent, ChatComponent
@@ -231,7 +228,7 @@ class MainWindowMicrofrontends(QMainWindow):
                 current_component.back_requested.connect(self.on_back_to_list_requested)
                 current_component.on_mount()
 
-        # ⬇️ הוספת לוגיקה ל-Chat Component
+        #   לוגיקה ל-Chat Component
         elif isinstance(current_component, ChatComponent): 
             if not current_component._presenter:
                 print("Main window: Connecting ChatPresenter...")
@@ -239,7 +236,6 @@ class MainWindowMicrofrontends(QMainWindow):
                 current_component.set_presenter(presenter)
                 presenter.set_view(current_component)
                 current_component.back_requested.connect(self.on_back_to_list_requested)
-            # קריאה ל-on_mount של הצ'אט כדי לטעון הודעת פתיחה
             current_component.on_mount() 
 
         # --- Admin Panel Component (חיבור Presenter) ---
@@ -257,13 +253,13 @@ class MainWindowMicrofrontends(QMainWindow):
         is_details = isinstance(current_component, ArticleDetailsComponent)
         is_weather = isinstance(current_component, WeatherComponent)
         is_admin_panel = isinstance(current_component, AdminPanelComponent)
-        is_chat = isinstance(current_component, ChatComponent) # ⬇️ תיקון: הוספת בדיקת צ'אט
+        is_chat = isinstance(current_component, ChatComponent)
 
         print(f"Main window: Updating nav buttons - Articles: {is_articles}, Details: {is_details}, Weather: {is_weather}, Admin: {is_admin_panel}, Chat: {is_chat}")
 
         self.nav_articles_btn.setChecked(is_articles or is_details)
         self.nav_weather_btn.setChecked(is_weather)
-        self.nav_chat_btn.setChecked(is_chat) # ⬇️ תיקון: הפעלת כפתור הצ'אט
+        self.nav_chat_btn.setChecked(is_chat) 
         
         # --- עדכון כפתור האדמין ---
         if self.is_admin:
@@ -294,11 +290,9 @@ class MainWindowMicrofrontends(QMainWindow):
         if reply == QMessageBox.StandardButton.Yes:
             # Cleanup for presenters
             for component_name, component_instance in self.manager._component_instances.items():
-                # בדיקה עבור presenter רגיל
                 if hasattr(component_instance, 'presenter') and component_instance.presenter and hasattr(component_instance.presenter, 'cleanup'):
                     print(f"Main window: Cleaning up presenter for {component_name}")
                     component_instance.presenter.cleanup()
-                # בדיקה עבור presenter עם _presenter (כמו weather ו-chat)
                 elif hasattr(component_instance, '_presenter') and component_instance._presenter and hasattr(component_instance._presenter, 'cleanup'):
                     print(f"Main window: Cleaning up presenter for {component_name} (weather/chat style)")
                     component_instance._presenter.cleanup()

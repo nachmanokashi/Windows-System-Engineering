@@ -1,8 +1,3 @@
-# desktop/newsdesk/components/article_details/article_details_view.py
-"""
-ArticleDetailsComponent - View
-הצגת פרטים מלאים של מאמר
-"""
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea,
     QWidget, QFrame, QTextBrowser, QSizePolicy

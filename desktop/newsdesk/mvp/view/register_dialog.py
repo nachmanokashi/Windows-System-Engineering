@@ -1,4 +1,3 @@
-# newsdesk/mvp/view/register_dialog.py
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, 
     QPushButton, QWidget, QMessageBox, QGraphicsDropShadowEffect
@@ -12,7 +11,7 @@ class RegisterDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Create Account")
-        self.setFixedSize(450, 550)  # ← הקטנתי מ-600 ל-550
+        self.setFixedSize(450, 550)  
         self.setModal(True)
         
         # Remove frame for custom design
@@ -63,8 +62,8 @@ class RegisterDialog(QDialog):
         container.setGraphicsEffect(shadow)
         
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(40, 30, 40, 30)  # ← הקטנתי margins
-        layout.setSpacing(15)  # ← הקטנתי spacing מ-20 ל-15
+        layout.setContentsMargins(40, 30, 40, 30)  
+        layout.setSpacing(15)  
         
         # Close button
         close_btn = QPushButton("✕", container)
@@ -85,7 +84,7 @@ class RegisterDialog(QDialog):
         # Title
         title = QLabel("Create Account")
         title_font = QFont()
-        title_font.setPointSize(22)  # ← הקטנתי מ-24
+        title_font.setPointSize(22) 
         title_font.setBold(True)
         title.setFont(title_font)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -94,10 +93,10 @@ class RegisterDialog(QDialog):
         
         subtitle = QLabel("Join NewsDesk today")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setStyleSheet("color: #8892b0; font-size: 12px;")  # ← הקטנתי מ-13
+        subtitle.setStyleSheet("color: #8892b0; font-size: 12px;") 
         layout.addWidget(subtitle)
         
-        layout.addSpacing(5)  # ← הקטנתי מ-10
+        layout.addSpacing(5) 
         
         # Input style
         input_style = """
@@ -155,7 +154,7 @@ class RegisterDialog(QDialog):
         
         # Register button
         self.ok_btn = QPushButton("Create Account")
-        self.ok_btn.setMinimumHeight(45)  # ← הקטנתי מ-50
+        self.ok_btn.setMinimumHeight(45)  
         self.ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.ok_btn.clicked.connect(self._on_ok)
         self.ok_btn.setStyleSheet("""
@@ -183,7 +182,7 @@ class RegisterDialog(QDialog):
         
         # Cancel button
         self.cancel_btn = QPushButton("Cancel")
-        self.cancel_btn.setMinimumHeight(40)  # ← הקטנתי מ-45
+        self.cancel_btn.setMinimumHeight(40)  
         self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.cancel_btn.clicked.connect(self.reject)
         self.cancel_btn.setStyleSheet("""

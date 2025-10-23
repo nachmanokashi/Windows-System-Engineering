@@ -1,4 +1,3 @@
-# newsdesk/mvp/presenter/login_presenter.py
 from PySide6.QtCore import QObject, Signal, Slot, QThread
 from newsdesk.mvp.view.login_window import LoginWindow
 from newsdesk.infra.http.auth_service_http import HttpAuthService
@@ -66,7 +65,6 @@ class LoginPresenter(QObject):
         thread.finished.connect(self._on_login_success)
         thread.error.connect(self._on_login_error)
         
-        # שמור reference
         self._threads.append(thread)
         thread.finished.connect(lambda: self._cleanup_thread(thread))
         thread.error.connect(lambda: self._cleanup_thread(thread))
@@ -76,7 +74,6 @@ class LoginPresenter(QObject):
     def _cleanup_thread(self, thread):
         """נקה thread"""
         try:
-            # המתן לסיום ה-thread
             thread.quit()
             thread.wait()
             self._threads.remove(thread)

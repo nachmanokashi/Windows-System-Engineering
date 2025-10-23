@@ -1,8 +1,3 @@
-# desktop/newsdesk/components/admin_panel/admin_panel_presenter.py
-"""
-Admin Panel Presenter - לוגיקת ניהול מאמרים
-"""
-
 from typing import Dict, Any, List
 from PySide6.QtWidgets import QMessageBox
 
@@ -22,7 +17,6 @@ class AdminPanelPresenter(BasePresenter):
         self.news_service = news_service
         self.categories: List[str] = []
 
-        # שה-View ידע מי ה-presenter שלו
         if hasattr(self.view, "set_presenter"):
             self.view.set_presenter(self)
 
@@ -43,12 +37,10 @@ class AdminPanelPresenter(BasePresenter):
         self.view.apply_classification_requested.connect(self.on_apply_classification)
         self.view.batch_classify_requested.connect(self.on_batch_classify)
 
-    # מאפשר ל-View לקרוא בעת on_mount
     def attach_view(self, view: AdminPanelComponent) -> None:
         self.view = view
 
     def detach_view(self) -> None:
-        # מקום לשחרר מאזינים/משאבים אם צריך
         pass
 
     # ------------------------------
@@ -59,7 +51,6 @@ class AdminPanelPresenter(BasePresenter):
         self.view.show_loading("Loading categories...")
 
         def on_success(data):
-            # יכול להגיע כ-list[str] או כ-dict עם 'categories'
             if isinstance(data, list):
                 cats = data
             elif isinstance(data, dict):
@@ -116,10 +107,8 @@ class AdminPanelPresenter(BasePresenter):
         """פתח דיאלוג להוספת מאמר"""
         dialog = ArticleFormDialog(self.view, categories=self.categories)
 
-        # אופציונלי: סיווג טיוטה מהדיאלוג (אם חיברת את הסיגנל בדיאלוג)
         def _on_draft(payload: Dict[str, Any]):
             try:
-                # אם יש שירות סיווג טיוטה – החלף; אחרת הדגמה פשוטה
                 res = {"category": "general", "confidence": 0.5}
                 dialog.show_classification_result(res["category"], res["confidence"])
             except Exception as e:
@@ -241,7 +230,6 @@ class AdminPanelPresenter(BasePresenter):
 
         def on_success(response: Dict[str, Any]):
             self.view.hide_loading()
-            # תומך גם במבנים שונים מהשרת
             suggested = (
                 response.get("suggested_category")
                 or response.get("category")
@@ -338,7 +326,6 @@ class AdminPanelPresenter(BasePresenter):
         self.view.update_status("Classifying articles with AI...")
 
         def on_success(response: Dict[str, Any]):
-            # מצופה {"success": True, "total": N, "results": [...]}
             self.view.hide_loading()
             total = response.get("total", len(article_ids))
             self.view.show_success(f"Batch classification complete for {total} articles.")

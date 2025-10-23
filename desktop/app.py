@@ -46,8 +46,6 @@ def main() -> None:
         username = user_data.get("username", "User") if user_data else "User"
         is_admin = user_data.get("is_admin", False) if user_data else False
         
-        # יצירת MainWindow עם Microfrontends
-        # הרישום של Weather מתבצע אוטומטית בתוך MainWindow!
         main_window = MainWindowMicrofrontends(
             api_client=api_client,
             username=username,

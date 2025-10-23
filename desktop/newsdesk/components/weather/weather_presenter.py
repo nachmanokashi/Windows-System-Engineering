@@ -1,9 +1,3 @@
-# desktop/newsdesk/mvp/view/components/weather/weather_presenter.py
-"""
-Weather Presenter - לוגיקה לתחזית מזג אוויר
-✅ תוקן: ללא /api/v1/ כי api_client כבר מוסיף אותו!
-"""
-
 from PySide6.QtCore import QObject, Signal
 
 
@@ -41,14 +35,11 @@ class WeatherPresenter(QObject):
             if city:
                 params["city"] = city
             
-            # ✅ ללא /api/v1/ - api_client מוסיף אותו אוטומטית!
             response = self.api_client.get("/weather/current", params=params)
             
             print(f"🔍 Response type: {type(response)}")
             
-            # בדוק אם זה Response או dict
             if hasattr(response, 'status_code'):
-                # זה Response object
                 if response.status_code == 200:
                     data = response.json()
                     print(f"✅ מזג אוויר התקבל: {data['temperature']}°C, עיר: {data['city']}")
@@ -58,7 +49,6 @@ class WeatherPresenter(QObject):
                     print(f"❌ {error}")
                     self.error_occurred.emit(error)
             else:
-                # זה כבר dict
                 if 'error' in response:
                     print(f"❌ שגיאה: {response['error']}")
                     self.error_occurred.emit(response['error'])
@@ -74,26 +64,21 @@ class WeatherPresenter(QObject):
     def _load_daily(self, city=None):
         """
         טען תחזית יומית
-        ✅ תוקן: ללא /api/v1/ - api_client מוסיף אותו אוטומטית!
         """
         try:
             params = {}
             if city:
                 params["city"] = city
             
-            # ✅ ללא /api/v1/ - api_client מוסיף אותו אוטומטית!
             response = self.api_client.get("/weather/daily", params=params)
             
             print(f"🔍 Daily Response type: {type(response)}")
             
-            # בדוק אם זה Response או dict
             if hasattr(response, 'status_code'):
-                # זה Response object
                 if response.status_code == 200:
                     data = response.json()
                     daily = data["daily_forecast"]
                     
-                    # ✅ הדפס נתונים אמיתיים שהתקבלו
                     print(f"✅ תחזית התקבלה: {len(daily)} ימים")
                     for day in daily:
                         print(f"   📊 {day['day_name']}: "
@@ -105,13 +90,11 @@ class WeatherPresenter(QObject):
                 else:
                     print(f"❌ שגיאה בתחזית: {response.status_code}")
             else:
-                # זה כבר dict
                 if 'error' in response:
                     print(f"❌ {response['error']}")
                 elif 'daily_forecast' in response:
                     daily = response["daily_forecast"]
                     
-                    # ✅ הדפס נתונים אמיתיים שהתקבלו
                     print(f"✅ תחזית: {len(daily)} ימים")
                     for day in daily:
                         print(f"   📊 {day['day_name']}: "
