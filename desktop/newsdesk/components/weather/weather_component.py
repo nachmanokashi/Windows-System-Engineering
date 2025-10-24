@@ -377,10 +377,7 @@ class WeatherComponent(QWidget):
         self.weather_icon.setText(icon)
     
     def update_daily_forecast(self, daily_data):
-        """
-        עדכן תחזית יומית + גרפים
-        ✅ תיקון: שימוש בנתוני לחות ורוח אמיתיים מה-API
-        """
+        
         day_names_he = {
             'Monday': 'שני', 'Tuesday': 'שלישי', 'Wednesday': 'רביעי',
             'Thursday': 'חמישי', 'Friday': 'שישי', 'Saturday': 'שבת', 'Sunday': 'ראשון'

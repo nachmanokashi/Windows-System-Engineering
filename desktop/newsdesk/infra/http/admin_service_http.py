@@ -37,36 +37,46 @@ class AdminServiceHttp:
 
     # ---------- CRUD ----------
     def create_article(self,
-                       title: str,
-                       url: str,
-                       source: str,
-                       summary: Optional[str] = None,
-                       content: Optional[str] = None,
-                       category: Optional[str] = None,
-                       image_url: Optional[str] = None):
+                    title: str,
+                    url: str,
+                    source: str,
+                    summary: str = "",  
+                    content: str = "",  
+                    category: Optional[str] = None,
+                    image_url: Optional[str] = None):
         payload = {
             "title": title,
             "url": url,
             "source": source,
-            "summary": summary,
-            "content": content,
+            "summary": summary or "",  
+            "content": content or "", 
             "category": category,
             "image_url": image_url
         }
+        print(f"🔵 Creating article with payload: {payload}")
         return self._api.post("admin/articles", json=payload)
 
     def update_article(self, article_id: int, **fields):
         """עדכון מאמר קיים"""
-        return self._api.put(f"admin/articles/{article_id}", json=fields)  # ✅ תוקן
+        return self._api.put(f"admin/articles/{article_id}", json=fields)  
 
     def delete_article(self, article_id: int):
         """מחיקת מאמר"""
-        return self._api.delete(f"admin/articles/{article_id}")  # ✅ תוקן
+        return self._api.delete(f"admin/articles/{article_id}") 
 
     # ---------- Classification ----------
     def classify_article(self, article_id: int):
         """סיווג AI הצעתי (ללא שינוי ב-DB)"""
         return self._api.post(f"admin/articles/{article_id}/classify")
+    
+    def classify_draft(self, title: str, summary: str = "", content: str = ""):
+        """סיווג טיוטה"""
+        payload = {
+            "title": title,
+            "summary": summary or "",
+            "content": content or ""
+        }
+        return self._api.post("admin/classify-draft", json=payload)
 
     def apply_classification(self, article_id: int):
         """החלת סיווג AI ושמירה בפועל"""

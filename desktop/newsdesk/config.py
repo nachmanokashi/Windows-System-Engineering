@@ -17,9 +17,9 @@ class ClientConfig:
     WINDOW_MIN_WIDTH: int = 800
     WINDOW_MIN_HEIGHT: int = 600
     
-    # Cache Settings (לעתיד)
+    # Cache Settings
     ENABLE_CACHE: bool = True
-    CACHE_DURATION_SECONDS: int = 300  # 5 דקות
+    CACHE_DURATION_SECONDS: int = 300  
     
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")

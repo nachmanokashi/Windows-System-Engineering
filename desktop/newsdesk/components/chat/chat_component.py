@@ -7,7 +7,6 @@ from PySide6.QtGui import QFont
 
 
 class ChatBubble(QFrame):
-    """בועת צ'אט בודדת"""
     
     def __init__(self, message: str, is_user: bool, parent=None):
         super().__init__(parent)

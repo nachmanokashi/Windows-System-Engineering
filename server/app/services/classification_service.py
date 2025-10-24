@@ -32,30 +32,14 @@ class ClassificationService:
             print("⚠️  Warning: HUGGINGFACE_API_KEY not set!")
     
     def classify_article(self, title: str, content: str = "", summary: str = "") -> Dict[str, Any]:
-        """
-        סווג מאמר לקטגוריה
-        
-        Args:
-            title: כותרת המאמר
-            content: תוכן המאמר (אופציונלי)
-            summary: סיכום (אופציונלי)
-        
-        Returns:
-            {
-                "category": "Technology",
-                "confidence": 0.95,
-                "all_scores": {"Technology": 0.95, "Business": 0.82, ...}
-            }
-        """
         try:
-            # בנה טקסט לניתוח (עד 512 תווים)
             text = f"{title}. "
             if summary:
                 text += f"{summary[:200]}. "
             if content:
                 text += content[:300]
             
-            text = text.strip()[:512]  # הגבלת אורך
+            text = text.strip()[:512]  
             
             print(f"🤖 Classifying: '{text[:60]}...'")
             
@@ -179,10 +163,7 @@ def get_classification_service() -> ClassificationService:
         _classification_service = ClassificationService()
     return _classification_service
 
-
-# ============================================
-# בדיקה מהירה
-# ============================================
+#בדיקות
 
 if __name__ == "__main__":
     print("=" * 70)

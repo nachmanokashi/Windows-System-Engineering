@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from newsdesk.mvp.model.article import Article
 from newsdesk.infra.http.news_api_client import NewsApiClient
-from dataclasses import fields # Import fields to check existing model fields
+from dataclasses import fields
 
 class HttpNewsService:
     def __init__(self, api: NewsApiClient) -> None:

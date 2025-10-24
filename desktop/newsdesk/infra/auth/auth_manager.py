@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import json
 
 class AuthManager:
-    """מנהל אימות - JWT Tokens"""
     
     def __init__(self):
         self._access_token: Optional[str] = None

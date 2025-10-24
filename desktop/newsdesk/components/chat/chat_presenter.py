@@ -2,7 +2,6 @@ from PySide6.QtCore import QObject
 
 
 class ChatPresenter(QObject):
-    """Presenter לצ'אט"""
     
     def __init__(self, api_client):
         super().__init__()
@@ -15,7 +14,6 @@ class ChatPresenter(QObject):
         self.view = view
     
     def send_message(self, message: str):
-        """שלח הודעה ל-AI"""
         print(f"💬 Sending message to Gemini: {message}")
         
         try:
@@ -68,21 +66,3 @@ class ChatPresenter(QObject):
         except Exception as e:
             print(f"⚠️ Failed to clear session: {e}")
     
-    def load_history(self):
-        """טען היסטוריה (אופציונלי)"""
-        try:
-            response = self.api_client.get(f"/gemini/history/{self.session_id}")
-            
-            if hasattr(response, 'status_code'):
-                if response.status_code == 200:
-                    data = response.json()
-                    history = data.get("history", [])
-                    
-                    # הצג בממשק
-                    if self.view:
-                        for msg in history:
-                            is_user = msg["role"] == "user"
-                            self.view.add_message(msg["content"], is_user)
-                            
-        except Exception as e:
-            print(f"⚠️ Failed to load history: {e}")
